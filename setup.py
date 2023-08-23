@@ -1,91 +1,70 @@
-# setup.py
 import sqlite3
+import bcrypt
 
 def setup_database():
-    connection = sqlite3.connect("database.db")
-    cursor = connection.cursor()
+    conn = sqlite3.connect("physiotherapy.db")
+    cursor = conn.cursor()
 
-    # Create loginDetails table
+    # Create tables if they don't exist
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS loginDetails (
-        username TEXT PRIMARY KEY NOT NULL,
-        password TEXT NOT NULL
-    )
+        CREATE TABLE IF NOT EXISTS appointments (
+            id INTEGER PRIMARY KEY,
+            client_id INTEGER,
+            staff_id INTEGER,
+            session_time TEXT,
+            session_date TEXT,
+            status TEXT,
+            comments TEXT,
+            FOREIGN KEY(client_id) REFERENCES clients(id),
+            FOREIGN KEY(staff_id) REFERENCES staff(id)
+        )
     """)
 
-    # Create staffDetails table
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS staffDetails (
-        staffID INTEGER PRIMARY KEY,
-        username TEXT UNIQUE NOT NULL,
-        access_level INTEGER NOT NULL,
-        staff_forename TEXT NOT NULL,
-        staff_surname TEXT NOT NULL,
-        staff_role TEXT NOT NULL,
-        DOB TEXT NOT NULL,
-        gender TEXT CHECK(gender IN ('Male', 'Female', 'Other')) NOT NULL,
-        phone TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL
-    )
+        CREATE TABLE IF NOT EXISTS clients (
+            id INTEGER PRIMARY KEY,
+            forename TEXT,
+            surname TEXT,
+            dob TEXT,
+            gender TEXT,
+            phone TEXT,
+            email TEXT,
+            comments TEXT
+        )
     """)
 
-    # Create clientDetails table
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS clientDetails (
-        clientID INTEGER PRIMARY KEY,
-        client_forename TEXT NOT NULL,
-        client_surname TEXT NOT NULL,
-        DOB TEXT NOT NULL,
-        gender TEXT CHECK(gender IN ('Male', 'Female', 'Other')) NOT NULL,
-        phone TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        comments TEXT
-    )
+        CREATE TABLE IF NOT EXISTS staff (
+            id INTEGER PRIMARY KEY,
+            username TEXT UNIQUE,
+            forename TEXT,
+            surname TEXT,
+            password TEXT,
+            access_level TEXT
+        )
     """)
 
-
-    # Create session table
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS session (
-        sessionID INTEGER PRIMARY KEY,
-        clientID INTEGER NOT NULL,
-        staffID INTEGER NOT NULL,
-        session_datetime TEXT NOT NULL,
-        session_status TEXT NOT NULL,
-        comments TEXT,
-        FOREIGN KEY(clientID) REFERENCES clientDetails(clientID),
-        FOREIGN KEY(staffID) REFERENCES staffDetails(staffID)
-    )
+        CREATE TABLE IF NOT EXISTS inventory (
+            id INTEGER PRIMARY KEY,
+            item_name TEXT,
+            quantity INTEGER,
+            expiry_date TEXT,
+            supplier TEXT,
+            cost_price REAL
+        )
     """)
 
+    # Add default admin user
+    default_password = b"Password1"  
+    hashed_password = bcrypt.hashpw(default_password, bcrypt.gensalt())
 
-    # Create appointments table
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS appointments (
-        sessionID INTEGER NOT NULL,
-        clientID INTEGER NOT NULL,
-        staffID INTEGER NOT NULL,
-        PRIMARY KEY (sessionID, clientID, staffID),
-        FOREIGN KEY(sessionID) REFERENCES session(sessionID),
-        FOREIGN KEY(clientID) REFERENCES clientDetails(clientID),
-        FOREIGN KEY(staffID) REFERENCES staffDetails(staffID)
-    )
-    """)
+    cursor.execute("INSERT OR IGNORE INTO staff (username, password, forename, surname, access_level) VALUES (?, ?, ?, ?, ?)",
+                   ("Admin", hashed_password, "Admin", "User", "admin"))
 
-    # Create inventory table
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS inventory (
-        itemID INTEGER PRIMARY KEY,
-        itemName TEXT NOT NULL,
-        quantity INTEGER CHECK(quantity >= 0) NOT NULL,
-        expiraryDate TEXT,
-        supplier TEXT NOT NULL,
-        cost_price REAL CHECK(cost_price >= 0.0) NOT NULL
-    )
-    """)
-
-    connection.commit()
-    connection.close()
+    # Commit the changes
+    conn.commit()
+    conn.close()
 
 if __name__ == "__main__":
     setup_database()
