@@ -242,6 +242,12 @@ class ClientsPage(tk.Frame):
         # Load clients into listbox
         self.load_clients()
 
+        # View  selected client details
+        self.view_client_button = ttk.Button(self, text="View Client", command=self.view_client)
+        self.view_client_button.pack(pady=10)
+
+
+
         # Export selected client
         self.export_specific_client_button = ttk.Button(self, text="Export Selected Client", command=self.export_specific_client, state=tk.DISABLED)
         self.export_specific_client_button.pack(pady=10)
@@ -262,6 +268,14 @@ class ClientsPage(tk.Frame):
     
     def add_client(self):
         new_client_window = AddClientWindow(self)
+
+    def view_client(self):
+        if not self.client_listbox.curselection():
+            messagebox.showerror("Error", "Please select a client to view!")
+            return
+
+        client_id = self.client_listbox.curselection()[0] + 1
+        ViewClientWindow(self, client_id)
 
     def edit_client(self):
         client_id = self.client_listbox.curselection()
@@ -517,6 +531,51 @@ class EditClientWindow(tk.Toplevel):
         
         self.parent.load_clients()
         self.destroy()
+
+class ViewClientWindow(tk.Toplevel):
+    def __init__(self, parent, client_id):
+        super().__init__(parent)
+        self.client_id = client_id
+        self.title("View Client")
+        self.geometry("300x400")
+        self.load_client_data()
+
+    def load_client_data(self):
+        conn = sqlite3.connect("physiotherapy.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM clients WHERE id=?", (self.client_id,))
+        client = cursor.fetchone()
+        conn.close()
+
+    
+
+        if client:
+            ttk.Label(self, text="Client ID:").grid(row=0, column=0, padx=10, pady=10)
+            ttk.Label(self, text=client[0]).grid(row=0, column=1)
+
+            ttk.Label(self, text="Forename:").grid(row=1, column=0, padx=10, pady=10)
+            ttk.Label(self, text=client[1]).grid(row=1, column=1)
+            
+            ttk.Label(self, text="Surname:").grid(row=2, column=0, padx=10, pady=10)
+            ttk.Label(self, text=client[2]).grid(row=2, column=1)
+            
+            ttk.Label(self, text="DOB:").grid(row=3, column=0, padx=10, pady=10)
+            ttk.Label(self, text=client[3]).grid(row=3, column=1)
+
+            ttk.Label(self, text="Gender:").grid(row=4, column=0, padx=10, pady=10)
+            ttk.Label(self, text=client[4]).grid(row=4, column=1)
+
+            ttk.Label(self, text="Phone:").grid(row=5, column=0, padx=10, pady=10)
+            ttk.Label(self, text=client[5]).grid(row=5, column=1)
+            
+            ttk.Label(self, text="Email:").grid(row=6, column=0, padx=10, pady=10)
+            ttk.Label(self, text=client[6]).grid(row=6, column=1)
+            
+            ttk.Label(self, text="Comments:").grid(row=7, column=0, padx=10, pady=10)
+            ttk.Label(self, text=client[7]).grid(row=7, column=1)
+        else:
+            ttk.Label(self, text="No client data found.").grid(row=0, column=0, padx=10, pady=10)
+
 
 class StaffPage(tk.Frame):
     def __init__(self, parent):
