@@ -576,7 +576,6 @@ class ViewClientWindow(tk.Toplevel):
         else:
             ttk.Label(self, text="No client data found.").grid(row=0, column=0, padx=10, pady=10)
 
-
 class StaffPage(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
@@ -610,15 +609,107 @@ class InventoryPage(tk.Frame):
         self.pack(fill=tk.BOTH, expand=True)
         self.create_widgets()
 
+
     def create_widgets(self):
-        self.label = ttk.Label(self, text="Inventory Page")
-        self.label.pack(pady=10)
 
-        # To be expanded upon with detailed inventory management widgets.
 
-        # Button to return to main page
-        self.return_button = ttk.Button(self, text="Return to Main Page", command=self.return_to_main)
-        self.return_button.pack(pady=20)
+        # Create the Treeview to show the table
+        self.tree = ttk.Treeview(self, columns=("item_id", "item_name", "quantity", "expiry_date", "supplier", "cost_price"), show='headings')
+
+        # Adjusting the column width
+        self.tree.column("item_id", width=70)
+        self.tree.column("item_name", width=200)
+        self.tree.column("quantity", width=70)
+        self.tree.column("expiry_date", width=120)
+        self.tree.column("supplier", width=100)
+        self.tree.column("cost_price", width=80)
+
+        self.tree.heading("item_id", text="Item ID")
+        self.tree.heading("item_name", text="Item Name")
+        self.tree.heading("quantity", text="Quantity")
+        self.tree.heading("expiry_date", text="Expiry Date")
+        self.tree.heading("supplier", text="Supplier")
+        self.tree.heading("cost_price", text="Cost Price")
+        self.tree.pack(pady=20)
+
+        # Buttons for Add, Edit and Delete
+        self.add_button = ttk.Button(self, text="Add Item", command=self.add_item)
+        self.add_button.pack(pady=10)
+
+        self.edit_button = ttk.Button(self, text="Edit Item", command=self.edit_item)
+        self.edit_button.pack(pady=10)
+
+        self.delete_button = ttk.Button(self, text="Delete Item", command=self.delete_item)
+        self.delete_button.pack(pady=10)
+
+        # Add Return to Main Page button
+        self.return_main_button = ttk.Button(self, text="Return to Main Page", command=self.return_to_main)
+        self.return_main_button.pack(pady=20)
+
+        # Load items into the treeview
+        self.load_items()
+
+    def load_items(self):
+        # Clear existing items in the treeview
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        # Connect to the database
+        conn = sqlite3.connect("physiotherapy.db")
+        cursor = conn.cursor()
+        
+        # Execute the SELECT query
+        cursor.execute("SELECT * FROM inventory")
+        items = cursor.fetchall()
+
+        # Insert each row into the Treeview
+        for item in items:
+            self.tree.insert("", "end", values=item)
+
+        # Close the database connection
+        conn.close()
+
+
+    def add_item(self):
+        AddItemWindow(self)
+
+    def edit_item(self):
+        selected_item = self.tree.selection()
+
+        if not selected_item:
+            messagebox.showerror("Error", "Please select an item to edit!")
+            return
+            
+        item_details = self.tree.item(selected_item, "values")
+        EditItemWindow(self, item_details)
+
+    def delete_item(self):
+        selected_item = self.tree.selection()
+
+        if not selected_item:
+            messagebox.showerror("Error", "Please select an item to delete!")
+            return
+
+        # Confirm deletion box
+        response = messagebox.askyesno("Confirmation", "Are you sure you want to delete this item?")
+        if response:
+            # Get the item's ID from the treeview
+            item_id_to_delete = self.tree.item(selected_item, "values")[0]
+
+            # Connect to the database
+            conn = sqlite3.connect("physiotherapy.db")
+            cursor = conn.cursor()
+
+            # Execute SQL command to delete the item with this item_id
+            cursor.execute("DELETE FROM inventory WHERE id=?", (item_id_to_delete,))
+
+            # Commit the changes and close the connection
+            conn.commit()
+            conn.close()
+
+            # Refresh the treeview to reflect the deleted item
+            self.load_items()
+
 
     def return_to_main(self):
         self.clear_frame()
@@ -628,6 +719,133 @@ class InventoryPage(tk.Frame):
     def clear_frame(self):
         for widget in self.winfo_children():
             widget.destroy()
+
+class AddItemWindow(tk.Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+        self.title("Add Item")
+        
+        # Create Entry widgets and labels
+        ttk.Label(self, text="Item Name:").grid(row=0, column=0)
+        self.item_name_entry = ttk.Entry(self)
+        self.item_name_entry.grid(row=0, column=1)
+
+        ttk.Label(self, text="Quantity:").grid(row=1, column=0)
+        self.quantity_entry = ttk.Entry(self)
+        self.quantity_entry.grid(row=1, column=1)
+
+        ttk.Label(self, text="Expiry Date:").grid(row=2, column=0)
+        self.expiry_date_entry = ttk.Entry(self)
+        self.expiry_date_entry.grid(row=2, column=1)
+
+        ttk.Label(self, text="Supplier:").grid(row=3, column=0)
+        self.supplier_entry = ttk.Entry(self)
+        self.supplier_entry.grid(row=3, column=1)
+
+        ttk.Label(self, text="Cost Price:").grid(row=4, column=0)
+        self.cost_price_entry = ttk.Entry(self)
+        self.cost_price_entry.grid(row=4, column=1)
+
+        ttk.Button(self, text="Submit", command=self.submit_to_database).grid(row=5, column=0, columnspan=2)
+
+    def submit_to_database(self):
+        item_name = self.item_name_entry.get()
+        quantity = self.quantity_entry.get()
+        expiry_date = self.expiry_date_entry.get()
+        supplier = self.supplier_entry.get()
+        cost_price = self.cost_price_entry.get()
+
+        if not item_name or not quantity:
+            messagebox.showerror("Error", "Please fill out the mandatory fields!")
+            return
+
+        # Insert the data into the database
+        conn = sqlite3.connect("physiotherapy.db")
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO inventory (item_name, quantity, expiry_date, supplier, cost_price)
+            VALUES (?, ?, ?, ?, ?)
+        """, (item_name, quantity, expiry_date, supplier, cost_price))
+
+        conn.commit()
+        conn.close()
+
+        # Refresh the main table to reflect the new item and close the window
+        self.parent.load_items()
+        self.destroy()
+
+class EditItemWindow(tk.Toplevel):
+    def __init__(self, parent, item_details):
+        super().__init__(parent)
+        self.parent = parent
+        self.item_details = item_details
+        self.title("Edit Item")
+        self.geometry("500x300")  
+        
+        self.create_widgets()
+
+    def create_widgets(self):
+        self.label_name = tk.Label(self, text="Item Name:")
+        self.label_name.grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
+
+        self.entry_name = tk.Entry(self)
+        self.entry_name.grid(row=0, column=1, padx=10, pady=10)
+        self.entry_name.insert(0, self.item_details[1])  # pre-fill with existing item name
+
+        self.label_quantity = tk.Label(self, text="Quantity:")
+        self.label_quantity.grid(row=1, column=0, padx=10, pady=10, sticky=tk.W)
+
+        self.entry_quantity = tk.Entry(self)
+        self.entry_quantity.grid(row=1, column=1, padx=10, pady=10)
+        self.entry_quantity.insert(0, self.item_details[2])  # pre-fill with existing quantity
+
+        self.label_expiry = tk.Label(self, text="Expiry Date:")
+        self.label_expiry.grid(row=2, column=0, padx=10, pady=10, sticky=tk.W)
+
+        self.entry_expiry = tk.Entry(self)
+        self.entry_expiry.grid(row=2, column=1, padx=10, pady=10)
+        self.entry_expiry.insert(0, self.item_details[3])  # pre-fill with existing expiry date
+
+        self.label_supplier = tk.Label(self, text="Supplier:")
+        self.label_supplier.grid(row=3, column=0, padx=10, pady=10, sticky=tk.W)
+
+        self.entry_supplier = tk.Entry(self)
+        self.entry_supplier.grid(row=3, column=1, padx=10, pady=10)
+        self.entry_supplier.insert(0, self.item_details[4])  # pre-fill with existing supplier
+
+        self.label_price = tk.Label(self, text="Cost Price:")
+        self.label_price.grid(row=4, column=0, padx=10, pady=10, sticky=tk.W)
+
+        self.entry_price = tk.Entry(self)
+        self.entry_price.grid(row=4, column=1, padx=10, pady=10)
+        self.entry_price.insert(0, self.item_details[5])  # pre-fill with existing cost price
+
+        self.btn_submit = tk.Button(self, text="Update Item", command=self.update_item)
+        self.btn_submit.grid(row=5, column=0, columnspan=2, pady=20)
+
+    def update_item(self):
+        item_id = self.item_details[0]
+        name = self.entry_name.get()
+        quantity = self.entry_quantity.get()
+        expiry = self.entry_expiry.get()
+        supplier = self.entry_supplier.get()
+        price = self.entry_price.get()
+
+        if not name or not quantity:
+            messagebox.showerror("Error", "Item Name and Quantity are mandatory!")
+            return
+
+        conn = sqlite3.connect("physiotherapy.db")
+        cursor = conn.cursor()
+        cursor.execute("UPDATE inventory SET item_name=?, quantity=?, expiry_date=?, supplier=?, cost_price=? WHERE id=?", (name, quantity, expiry, supplier, price, item_id))
+        conn.commit()
+        conn.close()
+
+        self.parent.load_items()  # Refresh the treeview
+        self.destroy()  # Close the Edit window
+
 
 class PhysiotherapyApp(tk.Tk):
     def __init__(self):
