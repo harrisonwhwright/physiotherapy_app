@@ -131,97 +131,319 @@ class AppointmentsPage(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        self.grid(row=0, column=0, sticky="nsew")
-        parent.grid_rowconfigure(0, weight=1)
-        parent.grid_columnconfigure(0, weight=1)
+        self.pack(fill=tk.BOTH, expand=True)
         self.create_widgets()
 
     def create_widgets(self):
-        # Here you can add the components for the Appointments page
-        # such as filtering tools, lists of appointments, etc.
-        # I'll keep it simple for brevity, but you can expand upon it.
+        # Create the Treeview to show appointments
+        columns = ("Client", "Staff", "Time", "Date", "Status")
+        self.tree = ttk.Treeview(self, columns=columns, show='headings')
+        for col in columns:
+            self.tree.heading(col, text=col)
+        self.tree.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
 
-        # Filter Section
-        ttk.Label(self, text="Filter Appointments").grid(row=0, column=0, sticky='w', pady=10, padx=10)
+        self.tree.column("Client", width=100)
+        self.tree.column("Staff", width=100)
+        self.tree.column("Time", width=50)
+        self.tree.column("Date", width=70)
+        self.tree.column("Status", width=80)
 
-        self.name_var = tk.StringVar()
-        self.name_entry = ttk.Entry(self, textvariable=self.name_var)
-        self.name_entry.grid(row=1, column=0, sticky='w', pady=10, padx=10)
-
-        self.gender_var = tk.StringVar()
-        self.gender_dropdown = ttk.Combobox(self, textvariable=self.gender_var, values=["Male", "Female"])
-        self.gender_dropdown.grid(row=1, column=1, sticky='w', pady=10, padx=10)
-
-        # ... You can add more filters like DOB, staff member, etc.
-
-        self.filter_button = ttk.Button(self, text="Apply Filter", command=self.apply_filter)
-        self.filter_button.grid(row=1, column=3, sticky='w', pady=10, padx=10)
-
-        # Appointments List
-        self.appointments_listbox = tk.Listbox(self, height=10, width=50)
-        self.appointments_listbox.grid(row=2, column=0, columnspan=4, pady=10, padx=10)
-
+        # Load data into the treeview
         self.load_appointments()
 
-        # Create New Appointment Button
-        self.new_appointment_button = ttk.Button(self, text="Create New Appointment", command=self.new_appointment)
-        self.new_appointment_button.grid(row=3, column=0, columnspan=4, pady=10)
+        # Buttons for adding, editing, and deleting appointments
+        self.add_button = ttk.Button(self, text="Add Appointment", command=self.open_add_appointment_window)
+        self.add_button.pack(pady=10)
+
+        self.edit_button = ttk.Button(self, text="Edit Appointment", command=self.open_edit_appointment_window)
+        self.edit_button.pack(pady=10)
+
+        self.delete_button = ttk.Button(self, text="Delete Appointment", command=self.delete_appointment)
+        self.delete_button.pack(pady=10)
 
         # Button to return to main page
         self.return_button = ttk.Button(self, text="Return to Main Page", command=self.return_to_main)
-        self.return_button.grid(row=100, column=0, columnspan=4, pady=20)
+        self.return_button.pack(pady=20)
 
     def load_appointments(self):
-        # Sample code to load appointments. This should be replaced with actual database fetch calls.
-        sample_data = ["Appointment 1", "Appointment 2", "Appointment 3"]
-        for item in sample_data:
-            self.appointments_listbox.insert(tk.END, item)
+        # Remove existing items in the treeview
+        for item in self.tree.get_children():
+            self.tree.delete(item)
 
-    def apply_filter(self):
-        # Logic to apply filter and reload the appointments list
-        pass
+        conn = sqlite3.connect("physiotherapy.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT c.forename || ' ' || c.surname, s.forename || ' ' || s.surname, a.session_time, a.session_date, a.status \
+                        FROM appointments a \
+                        INNER JOIN clients c ON a.client_id = c.id \
+                        INNER JOIN staff s ON a.staff_id = s.id")
+        appointments = cursor.fetchall()
 
-    def new_appointment(self):
-        new_app_page = NewAppointmentPage(self)
-        new_app_page.grid(row=6, column=0, columnspan=4, pady=10, padx=10, sticky='nsew')
+        for appointment in appointments:
+            self.tree.insert("", "end", values=appointment)
+        
+        conn.close()
+
+    def open_add_appointment_window(self):
+        AddAppointmentWindow(self)
+
+    def open_edit_appointment_window(self):
+        selected_item = self.tree.selection()
+        if not selected_item:
+            messagebox.showerror("Error", "Please select an appointment to edit!")
+            return
+
+        # Fetch the ID of the appointment using a modified version of your previous SQL
+        conn = sqlite3.connect("physiotherapy.db")
+        cursor = conn.cursor()
+        appointment_data = self.tree.item(selected_item)
+        client_name = appointment_data["values"][0]
+        staff_name = appointment_data["values"][1]
+        time = appointment_data["values"][2]
+        date = appointment_data["values"][3]
+        cursor.execute("SELECT a.id FROM appointments a WHERE client_id=(SELECT id FROM clients WHERE forename || ' ' || surname = ?) AND staff_id=(SELECT id FROM staff WHERE forename || ' ' || surname = ?) AND session_time=? AND session_date=?", (client_name, staff_name, time, date))
+        appointment_id = cursor.fetchone()[0]
+        conn.close()
+
+        EditAppointmentWindow(self, appointment_id)
+
+    def delete_appointment(self):
+        selected_item = self.tree.selection()
+        if not selected_item:
+            messagebox.showerror("Error", "Please select an appointment to delete!")
+            return
+
+        response = messagebox.askyesno("Confirmation", "Are you sure you want to delete this appointment?")
+        if not response:
+            return
+
+        conn = sqlite3.connect("physiotherapy.db")
+        cursor = conn.cursor()
+
+        # Retrieve the ID from the selected appointment
+        appointment_data = self.tree.item(selected_item)
+        client_name = appointment_data["values"][0]
+        staff_name = appointment_data["values"][1]
+        time = appointment_data["values"][2]
+        date = appointment_data["values"][3]
+
+        cursor.execute("DELETE FROM appointments WHERE client_id=(SELECT id FROM clients WHERE forename || ' ' || surname = ?) AND staff_id=(SELECT id FROM staff WHERE forename || ' ' || surname = ?) AND session_time=? AND session_date=?", (client_name, staff_name, time, date))
+
+        conn.commit()
+        conn.close()
+
+        self.load_appointments()
 
     def return_to_main(self):
         self.clear_frame()
-        self.destroy()
-        self.parent.create_widgets()
+        self.destroy()  # Destroy the current sub-page frame
+        self.parent.create_widgets()  # Then recreate the main page's widgets
 
     def clear_frame(self):
         for widget in self.winfo_children():
             widget.destroy()
 
-class NewAppointmentPage(tk.Frame):
+class AddAppointmentWindow(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
+        self.title("Add Appointment")
+        self.geometry("400x400")
         self.create_widgets()
 
     def create_widgets(self):
-        # Client dropdown, fetched from database
+        conn = sqlite3.connect("physiotherapy.db")
+        cursor = conn.cursor()
+
+        # Fetch staff and clients
+        cursor.execute("SELECT id, forename, surname FROM staff")
+        self.staff = [{"id": s[0], "name": f"{s[1]} {s[2]}"} for s in cursor.fetchall()]
+
+        cursor.execute("SELECT id, forename, surname FROM clients")
+        self.clients = [{"id": c[0], "name": f"{c[1]} {c[2]}"} for c in cursor.fetchall()]
+
+        conn.close()
+
+        # Staff dropdown
+        self.staff_var = tk.StringVar()
+        self.staff_dropdown = ttk.Combobox(self, textvariable=self.staff_var, values=[s["name"] for s in self.staff])
+        self.staff_dropdown.grid(row=0, column=1)
+        ttk.Label(self, text="Staff:").grid(row=0, column=0)
+
+        # Client dropdown
         self.client_var = tk.StringVar()
-        self.client_dropdown = ttk.Combobox(self, textvariable=self.client_var, values=self.fetch_clients())
-        self.client_dropdown.grid(row=0, column=1, sticky='w', pady=10, padx=10)
+        self.client_dropdown = ttk.Combobox(self, textvariable=self.client_var, values=[c["name"] for c in self.clients])
+        self.client_dropdown.grid(row=1, column=1)
+        ttk.Label(self, text="Client:").grid(row=1, column=0)
 
-        # ... similar widgets for staff, session time/date, and status
+        # Time input
+        self.time_var = tk.StringVar()
+        self.time_entry = ttk.Entry(self, textvariable=self.time_var)
+        self.time_entry.grid(row=2, column=1)
+        ttk.Label(self, text="Time (HH:MM):").grid(row=2, column=0)
 
-        self.comment_var = tk.StringVar()
-        self.comment_entry = ttk.Entry(self, textvariable=self.comment_var)
-        self.comment_entry.grid(row=4, column=1, sticky='w', pady=10, padx=10)
+        # Date input
+        self.date_var = tk.StringVar()
+        self.date_entry = ttk.Entry(self, textvariable=self.date_var)
+        self.date_entry.grid(row=3, column=1)
+        ttk.Label(self, text="Date (DD-MM-YY):").grid(row=3, column=0)
 
-        self.save_button = ttk.Button(self, text="Save Appointment", command=self.save_appointment)
-        self.save_button.grid(row=5, column=0, columnspan=2, pady=10)
+        # Status
+        self.status_var = tk.StringVar(value="Pending")  # Default to "Pending"
+        
+        # Comments
+        self.comments_var = tk.StringVar()
+        self.comments_entry = ttk.Entry(self, textvariable=self.comments_var)
+        self.comments_entry.grid(row=4, column=1)
+        ttk.Label(self, text="Comments:").grid(row=4, column=0)
 
-    def fetch_clients(self):
-        # Sample code. Replace with fetching client names from the database.
-        return ["Client 1", "Client 2", "Client 3"]
+        # Submit Button
+        ttk.Button(self, text="Submit", command=self.add_to_database).grid(row=5, column=0, columnspan=2)
 
-    def save_appointment(self):
-        # Logic to save the appointment to the database.
-        pass
+    def add_to_database(self):
+        selected_staff = [s for s in self.staff if s["name"] == self.staff_var.get()][0]
+        selected_client = [c for c in self.clients if c["name"] == self.client_var.get()][0]
+        time = self.time_var.get()
+        date = self.date_var.get()
+
+        # Basic validation
+        if not self.staff_var.get() or not self.client_var.get() or not time or not date:
+            messagebox.showerror("Error", "Please fill out all fields!")
+            return
+        
+        # Format checks for time and date can be added here if needed
+        
+        conn = sqlite3.connect("physiotherapy.db")
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO appointments (client_id, staff_id, session_time, session_date, status, comments) VALUES (?, ?, ?, ?, ?, ?)", 
+                       (selected_client["id"], selected_staff["id"], time, date, self.status_var.get(), self.comments_var.get()))
+        
+        conn.commit()
+        conn.close()
+
+        self.parent.load_appointments()
+        self.destroy()
+
+class EditAppointmentWindow(tk.Toplevel):
+    def __init__(self, parent, appointment_id):
+        super().__init__(parent)
+        self.parent = parent
+        self.appointment_id = appointment_id
+        self.title("Edit Appointment")
+        self.geometry("400x400")
+        self.create_widgets()
+        self.load_appointment_data()
+
+    def create_widgets(self):
+        conn = sqlite3.connect("physiotherapy.db")
+        cursor = conn.cursor()
+
+        # Fetch staff and clients
+        cursor.execute("SELECT id, forename, surname FROM staff")
+        self.staff = [{"id": s[0], "name": f"{s[1]} {s[2]}"} for s in cursor.fetchall()]
+
+        cursor.execute("SELECT id, forename, surname FROM clients")
+        self.clients = [{"id": c[0], "name": f"{c[1]} {c[2]}"} for c in cursor.fetchall()]
+
+        conn.close()
+
+        # Staff dropdown
+        self.staff_var = tk.StringVar()
+        self.staff_dropdown = ttk.Combobox(self, textvariable=self.staff_var, values=[s["name"] for s in self.staff])
+        self.staff_dropdown.grid(row=0, column=1)
+        ttk.Label(self, text="Staff:").grid(row=0, column=0)
+
+        # Client dropdown
+        self.client_var = tk.StringVar()
+        self.client_dropdown = ttk.Combobox(self, textvariable=self.client_var, values=[c["name"] for c in self.clients])
+        self.client_dropdown.grid(row=1, column=1)
+        ttk.Label(self, text="Client:").grid(row=1, column=0)
+
+        # Time input
+        self.time_var = tk.StringVar()
+        self.time_entry = ttk.Entry(self, textvariable=self.time_var)
+        self.time_entry.grid(row=2, column=1)
+        ttk.Label(self, text="Time (HH:MM):").grid(row=2, column=0)
+
+        # Date input
+        self.date_var = tk.StringVar()
+        self.date_entry = ttk.Entry(self, textvariable=self.date_var)
+        self.date_entry.grid(row=3, column=1)
+        ttk.Label(self, text="Date (DD-MM-YY):").grid(row=3, column=0)
+
+        # Status dropdown
+        self.status_options = ["Pending", "Completed", "Cancelled"]
+        self.status_var = tk.StringVar()
+        self.status_dropdown = ttk.Combobox(self, textvariable=self.status_var, values=self.status_options, state="readonly")
+        self.status_dropdown.grid(row=5, column=1)
+        ttk.Label(self, text="Status:").grid(row=5, column=0)
+        
+        # Comments
+        self.comments_var = tk.StringVar()
+        self.comments_entry = ttk.Entry(self, textvariable=self.comments_var)
+        self.comments_entry.grid(row=6, column=1)
+        ttk.Label(self, text="Comments:").grid(row=6, column=0)
+
+        # Submit Button
+        ttk.Button(self, text="Update", command=self.update_to_database).grid(row=7, column=0, columnspan=2)
+
+    def load_appointment_data(self):
+        # Connect to the database
+        conn = sqlite3.connect("physiotherapy.db")
+        cursor = conn.cursor()
+
+        # Fetch the appointment's details based on the appointment ID
+        cursor.execute("SELECT c.forename || ' ' || c.surname, s.forename || ' ' || s.surname, a.session_time, a.session_date, a.status, a.comments \
+                        FROM appointments a \
+                        INNER JOIN clients c ON a.client_id = c.id \
+                        INNER JOIN staff s ON a.staff_id = s.id WHERE a.id = ?", (self.appointment_id,))
+        data = cursor.fetchone()
+
+        # Populate widgets with the data
+        self.staff_dropdown.set(data[1])
+        self.client_dropdown.set(data[0])
+        self.time_entry.insert(0, data[2])
+        self.date_entry.insert(0, data[3])
+        self.comments_entry.insert(0, data[5])
+
+        # Set the status dropdown to the current status
+        self.status_var.set(data[4])   # Assuming the fifth element in the fetched data is the appointment's status
+
+        conn.close()
+
+    def update_to_database(self):
+        # Collect all data from widgets
+        staff_name = self.staff_var.get()
+        client_name = self.client_var.get()
+        time = self.time_var.get()
+        date = self.date_var.get()
+        status = self.status_var.get()
+        comments = self.comments_entry.get()
+
+        # Validate (to ensure no empty fields)
+        if not all([staff_name, client_name, time, date]):
+            messagebox.showerror("Error", "All fields except comments must be filled!")
+            return
+
+        # Database Update Operation
+        conn = sqlite3.connect("physiotherapy.db")
+        cursor = conn.cursor()
+
+        # Get staff and client IDs
+        cursor.execute("SELECT id FROM staff WHERE forename || ' ' || surname = ?", (staff_name,))
+        staff_id = cursor.fetchone()[0]
+
+        cursor.execute("SELECT id FROM clients WHERE forename || ' ' || surname = ?", (client_name,))
+        client_id = cursor.fetchone()[0]
+
+        # Update the appointment
+        cursor.execute("UPDATE appointments SET staff_id=?, client_id=?, session_time=?, session_date=?, status=?, comments=? WHERE id=?", 
+                       (staff_id, client_id, time, date, status, comments, self.appointment_id))
+        
+        conn.commit()
+        conn.close()
+
+        self.parent.load_appointments()
+        self.destroy()
 
 class ClientsPage(tk.Frame):
     def __init__(self, parent):
@@ -587,12 +809,67 @@ class StaffPage(tk.Frame):
         self.label = ttk.Label(self, text="Staff Page")
         self.label.pack(pady=10)
 
-        # To be expanded upon with detailed staff management widgets.
+        self.listbox = tk.Listbox(self)
+        self.listbox.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+
+        self.add_button = ttk.Button(self, text="Add Staff", command=self.open_add_staff_window)
+        self.add_button.pack(pady=10)
+
+        self.edit_button = ttk.Button(self, text="Edit Staff", command=self.open_edit_staff_window)
+        self.edit_button.pack(pady=10)
+
+        self.remove_button = ttk.Button(self, text="Remove Staff", command=self.remove_staff)
+        self.remove_button.pack(pady=10)
 
         # Button to return to main page
         self.return_button = ttk.Button(self, text="Return to Main Page", command=self.return_to_main)
         self.return_button.pack(pady=20)
+    
+        self.load_staff()
 
+    def load_staff(self):
+        self.listbox.delete(0, tk.END)  # Clear current list
+        conn = sqlite3.connect("physiotherapy.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, forename, surname, access_level FROM staff")
+        staff_members = cursor.fetchall()
+        for member in staff_members:
+            self.listbox.insert(tk.END, f"ID: {member[0]}, Username: {member[1]}, Name: {member[2]} {member[3]}, Access Level: {member[4]}")
+        conn.close()
+
+    def open_add_staff_window(self):
+        AddStaffWindow(self)
+
+    def open_edit_staff_window(self):
+        selected_index = self.listbox.curselection()
+        if not selected_index:
+            messagebox.showerror("Error", "Please select a staff member to edit!")
+            return
+        selected_id = int(self.listbox.get(selected_index).split(",")[0].split(":")[1].strip())
+        EditStaffWindow(self, selected_id)
+
+    def remove_staff(self):
+        selected_index = self.listbox.curselection()
+        if not selected_index:
+            messagebox.showerror("Error", "Please select a staff member to remove!")
+            return
+
+        # Extract the ID of the selected staff member
+        selected_id = int(self.listbox.get(selected_index).split(",")[0].split(":")[1].strip())
+
+        # Ask for confirmation
+        response = messagebox.askyesno("Confirmation", "Are you sure you want to remove this staff member?")
+        if response:
+            # Remove the staff member from the database
+            conn = sqlite3.connect("physiotherapy.db")
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM staff WHERE id=?", (selected_id,))
+            conn.commit()
+            conn.close()
+
+            # Refresh the listbox
+            self.load_staff()
+        
     def return_to_main(self):
         self.clear_frame()
         self.destroy()  # Destroy the current sub-page frame
@@ -601,6 +878,131 @@ class StaffPage(tk.Frame):
     def clear_frame(self):
         for widget in self.winfo_children():
             widget.destroy()
+
+class AddStaffWindow(tk.Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+        self.title("Add Staff")
+        self.geometry("400x300")
+        self.create_widgets()
+
+    def create_widgets(self):
+        ttk.Label(self, text="Username:").grid(row=0, column=0, padx=10, pady=10)
+        self.username_entry = ttk.Entry(self)
+        self.username_entry.grid(row=0, column=1)
+
+        ttk.Label(self, text="Password:").grid(row=1, column=0, padx=10, pady=10)
+        self.password_entry = ttk.Entry(self, show="*")
+        self.password_entry.grid(row=1, column=1)
+
+        ttk.Label(self, text="Forename:").grid(row=2, column=0, padx=10, pady=10)
+        self.forename_entry = ttk.Entry(self)
+        self.forename_entry.grid(row=2, column=1)
+
+        ttk.Label(self, text="Surname:").grid(row=3, column=0, padx=10, pady=10)
+        self.surname_entry = ttk.Entry(self)
+        self.surname_entry.grid(row=3, column=1)
+
+        ttk.Label(self, text="Access Level:").grid(row=4, column=0, padx=10, pady=10)
+        self.access_var = tk.StringVar()
+        self.access_dropdown = ttk.Combobox(self, textvariable=self.access_var, values=["1", "2", "3"])
+        self.access_dropdown.grid(row=4, column=1)
+
+        ttk.Button(self, text="Submit", command=self.add_to_database).grid(row=5, column=0, columnspan=2, pady=20)
+
+    def add_to_database(self):
+        username = self.username_entry.get()
+        password = self.password_entry.get()  # You may want to hash this
+        forename = self.forename_entry.get()
+        surname = self.surname_entry.get()
+        access_level = self.access_var.get()
+
+        if not username or not password or not forename or not surname:
+            messagebox.showerror("Error", "Please fill out all fields!")
+            return
+
+        conn = sqlite3.connect("physiotherapy.db")
+        cursor = conn.cursor()
+
+        cursor.execute("INSERT INTO staff (username, password, forename, surname, access_level) VALUES (?, ?, ?, ?, ?)", 
+                       (username, password, forename, surname, access_level))
+        
+        conn.commit()
+        conn.close()
+
+        self.parent.load_staff()
+        self.destroy()
+
+class EditStaffWindow(tk.Toplevel):
+    def __init__(self, parent, staff_id):
+        super().__init__(parent)
+        self.parent = parent
+        self.staff_id = staff_id
+        self.title("Edit Staff")
+        self.geometry("400x300")
+        self.create_widgets()
+        self.load_staff_data()
+
+    def create_widgets(self):
+        ttk.Label(self, text="Username:").grid(row=0, column=0, padx=10, pady=10)
+        self.username_entry = ttk.Entry(self)
+        self.username_entry.grid(row=0, column=1)
+
+        ttk.Label(self, text="Password:").grid(row=1, column=0, padx=10, pady=10)
+        self.password_entry = ttk.Entry(self, show="*")
+        self.password_entry.grid(row=1, column=1)
+
+        ttk.Label(self, text="Forename:").grid(row=2, column=0, padx=10, pady=10)
+        self.forename_entry = ttk.Entry(self)
+        self.forename_entry.grid(row=2, column=1)
+
+        ttk.Label(self, text="Surname:").grid(row=3, column=0, padx=10, pady=10)
+        self.surname_entry = ttk.Entry(self)
+        self.surname_entry.grid(row=3, column=1)
+
+        ttk.Label(self, text="Access Level:").grid(row=4, column=0, padx=10, pady=10)
+        self.access_var = tk.StringVar(self)
+        self.access_dropdown = ttk.Combobox(self, textvariable=self.access_var, values=["1", "2", "3"])
+        self.access_dropdown.grid(row=4, column=1)
+
+        ttk.Button(self, text="Save Changes", command=self.update_database).grid(row=5, column=0, columnspan=2, pady=20)
+
+    def load_staff_data(self):
+        conn = sqlite3.connect("physiotherapy.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT username, password, forename, surname, access_level FROM staff WHERE id = ?", (self.staff_id,))
+        data = cursor.fetchone()
+        conn.close()
+
+        if data:
+            self.username_entry.insert(0, data[0])
+            self.password_entry.insert(0, data[1])  # NOTE: Displaying passwords can be a security risk
+            self.forename_entry.insert(0, data[2])
+            self.surname_entry.insert(0, data[3])
+            self.access_var.set(data[4])
+
+    def update_database(self):
+        username = self.username_entry.get()
+        password = self.password_entry.get()
+        forename = self.forename_entry.get()
+        surname = self.surname_entry.get()
+        access_level = self.access_var.get()
+
+        if not username or not password or not forename or not surname:
+            messagebox.showerror("Error", "Please fill out all fields!")
+            return
+
+        conn = sqlite3.connect("physiotherapy.db")
+        cursor = conn.cursor()
+        cursor.execute("UPDATE staff SET username=?, password=?, forename=?, surname=?, access_level=? WHERE id=?", 
+                       (username, password, forename, surname, access_level, self.staff_id))
+        
+        conn.commit()
+        conn.close()
+
+        self.parent.load_staff()
+        self.destroy()
 
 class InventoryPage(tk.Frame):
     def __init__(self, parent):
