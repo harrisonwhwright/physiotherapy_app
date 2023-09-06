@@ -1248,7 +1248,6 @@ class EditItemWindow(tk.Toplevel):
         self.parent.load_items()  # Refresh the treeview
         self.destroy()  # Close the Edit window
 
-
 class PhysiotherapyApp(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -1339,4 +1338,3 @@ class PhysiotherapyApp(tk.Tk):
 if __name__ == "__main__":
     app = PhysiotherapyApp()
     app.mainloop()
-
