@@ -1,13 +1,10 @@
 import sqlite3
 import bcrypt
 
-# Connect to the SQLite database or create it if it doesn't exist
 conn = sqlite3.connect('database.db')
-# Create a cursor object to execute SQL commands
 cursor = conn.cursor()
 
 def setup_database():
-    # Creates the client table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS client (
         client_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,7 +19,6 @@ def setup_database():
     )
     ''')
 
-    # Creates the staff table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS staff (
         staff_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,11 +29,11 @@ def setup_database():
         staff_phone VARCHAR(15),
         staff_email VARCHAR(50),
         staff_address VARCHAR(100),
+        staff_status VARCHAR(20),
         staff_comments VARCHAR(100)
     )
     ''')
 
-    # Creates the service table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS service (
         service_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,7 +43,6 @@ def setup_database():
     )
     ''')
 
-    # Creates the appointment table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS appointment (
         appointment_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,7 +56,6 @@ def setup_database():
     )
     ''')
 
-    # Creates the login table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS login (
         staff_id INTEGER REFERENCES staff (staff_id),
@@ -70,7 +64,6 @@ def setup_database():
     )
     ''')
 
-    # Creates the bill table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS bill (
         bill_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,3 +89,4 @@ if __name__ == "__main__":
     setup_database()
     add_default_admin()
     conn.close()
+    print("Database setup Completed")
