@@ -62,7 +62,7 @@ class mainWindow(tk.Tk):
         tk.Label(self, image=self.logo).pack(pady=5)
 
         ttk.Button(self, text="Appointments", command=self.open_appointments).pack(pady=5)
-        ttk.Button(self, text="Clients", command=self.WIP_window).pack(pady=5)
+        ttk.Button(self, text="Clients", command=self.open_clients).pack(pady=5)
         ttk.Button(self, text="Staff", command=self.open_staff).pack(pady=5)
         ttk.Button(self, text="Transactions", command=self.WIP_window).pack(pady=5)
     
@@ -76,6 +76,9 @@ class mainWindow(tk.Tk):
 
     def open_appointments(self):
         appointments_page(self)
+    
+    def open_clients(self):
+        clients_page(self)
 
     def open_staff(self):
         staff_page(self)
@@ -141,6 +144,421 @@ class appointments_page(tk.Toplevel):
         services_button = ttk.Button(self, text="View and Edit services")
         services_button.pack(pady=10)
 
+class clients_page(tk.Toplevel):
+    def __init__(self, master=None):
+        super().__init__(master)
+        self.title("Clients")
+        self.geometry("550x600")
+
+        heading = ttk.Frame(self)
+        heading.pack(pady=10, padx=10)
+
+        self.logo = tk.PhotoImage(file='img_fit1sttherapy_logo.png').subsample(12, 12)
+        logo_label = ttk.Label(heading, image=self.logo)
+        logo_label.grid(row=0, column=0, padx=10, pady=5)
+
+        self.client_table = ttk.Treeview(self, columns=('ID', 'Name', 'DOB', 'Gender', 'Email', 'Phone'), show='headings', height=14)
+
+        self.client_table.column('ID', width=30)
+        self.client_table.column('Name', width=120)
+        self.client_table.column('DOB', width=70)
+        self.client_table.column('Gender', width=50)
+        self.client_table.column('Email', width=150)
+        self.client_table.column('Phone', width=75)
+
+        self.client_table.heading('ID', text='ID')
+        self.client_table.heading('Name', text='Name')
+        self.client_table.heading('DOB', text='DOB')
+        self.client_table.heading('Gender', text='Gender')
+        self.client_table.heading('Email', text='Email')
+        self.client_table.heading('Phone', text='Phone')
+        self.client_table.pack(pady=20)
+
+        menu_frame = ttk.Frame(self)
+        menu_frame.pack(pady=10, padx=10)
+
+        view_client = ttk.Button(menu_frame, text="View", command=self.view_client)
+        view_client.grid(row=0, column=0, padx=5)
+
+        add_client = ttk.Button(menu_frame, text="Add", command=self.add_client)
+        add_client.grid(row=0, column=1, padx=5)
+
+        edit_client = ttk.Button(menu_frame, text="Edit", command=self.edit_client)
+        edit_client.grid(row=0, column=2, padx=5)
+
+        delete_client = ttk.Button(menu_frame, text="Delete", command=self.delete_client)
+        delete_client.grid(row=0, column=3, padx=5)
+
+        select_all_button = ttk.Button(menu_frame, text="Select All", command=self.select_all)
+        select_all_button.grid(row=2, column=1, padx=5, pady=10)
+
+        export_button = ttk.Button(menu_frame, text="Export Selected", command=self.export_selected)
+        export_button.grid(row=2, column=2, padx=5, pady=10)
+
+        self.fetch_and_display()
+
+    def connect_database(self):
+        self.conn = sqlite3.connect('database.db')
+        self.cursor = self.conn.cursor()
+
+    def fetch_and_display(self):
+        self.connect_database()
+        query = '''
+        SELECT client_id, client_forename || ' ' || client_surname AS Name, client_DOB AS DOB, client_gender AS Gender, client_email AS Email, client_phone as Phone
+        FROM client
+        ORDER BY Name
+        '''
+        rows = self.cursor.execute(query).fetchall()
+        for row in rows:
+            self.client_table.insert("", "end", iid=row[0], values=row) 
+
+    def view_client(self):
+        selected_item = self.client_table.selection()
+        if not selected_item:
+            messagebox.showwarning("Warning", "Please select a client to view.")
+            return
+
+        client_id = selected_item[0]
+        self.connect_database()
+
+        try:
+            row = self.cursor.execute("SELECT * FROM client WHERE client_id=?", (client_id,)).fetchone()
+            if not row:
+                messagebox.showwarning("Warning", "The selected client was not found.")
+                return
+
+            self.view_client_window = tk.Toplevel(self)
+            self.view_client_window.title("View Client")
+            self.view_client_window.geometry("300x300")
+
+            view_client_frame = tk.Frame(self.view_client_window)
+            view_client_frame.pack(padx=10, pady=10)
+
+            client_forename_label = tk.Label(view_client_frame, text="Client ID: " + str(row[0]))
+            client_forename_label.grid(row=0, column=0)
+
+            client_forename_label = tk.Label(view_client_frame, text="Forename: " + row[1])
+            client_forename_label.grid(row=1, column=0)
+
+            client_surname_label = tk.Label(view_client_frame, text="Surname: " + row[2])
+            client_surname_label.grid(row=2, column=0)
+
+            client_dob_label = tk.Label(view_client_frame, text="DOB: " + row[3])
+            client_dob_label.grid(row=3, column=0)
+
+            client_gender_label = tk.Label(view_client_frame, text="Gender: " + row[4])
+            client_gender_label.grid(row=4, column=0)
+
+            client_phone_label = tk.Label(view_client_frame, text="Phone: " + row[5])
+            client_phone_label.grid(row=5, column=0)
+
+            client_email_label = tk.Label(view_client_frame, text="Email: " + row[6])
+            client_email_label.grid(row=6, column=0)
+
+            client_address_label = tk.Label(view_client_frame, text="Address: " + row[7])
+            client_address_label.grid(row=7, column=0)
+
+            client_comments_label = tk.Label(view_client_frame, text="Comments: " + row[8])
+            client_comments_label.grid(row=8, column=0)
+        
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+        finally:
+            self.conn.close()
+
+    def add_client(self):
+        self.add_client_window = tk.Toplevel(self)
+        self.add_client_window.title("Add Client")
+        self.add_client_window.geometry("300x300")
+
+        add_client_frame = tk.Frame(self.add_client_window)
+        add_client_frame.pack(padx=10, pady=10)
+
+        client_forename_label = tk.Label(add_client_frame, text="*Forename:")
+        client_forename_label.grid(row=0, column=0)
+        self.client_forename_entry = tk.Entry(add_client_frame)
+        self.client_forename_entry.grid(row=0, column=1)
+        
+        client_surname_label = tk.Label(add_client_frame, text="*Surname:")
+        client_surname_label.grid(row=1, column=0)
+        self.client_surname_entry = tk.Entry(add_client_frame)
+        self.client_surname_entry.grid(row=1, column=1)
+        
+        client_dob_label = tk.Label(add_client_frame, text="*DOB:")
+        client_dob_label.grid(row=2, column=0)
+        self.client_dob_entry = tk.Entry(add_client_frame)
+        self.client_dob_entry.grid(row=2, column=1)
+
+        self.gender_selection = tk.StringVar()
+        client_gender_label = tk.Label(add_client_frame, text="*Gender:")
+        client_gender_label.grid(row=3, column=0)
+        gender_options = ["", "Male", "Female", "Other"]
+        gender_entry = ttk.OptionMenu(add_client_frame, self.gender_selection, gender_options[0], *gender_options)
+        gender_entry.grid(row=3, column=1)
+
+        client_phone_label = tk.Label(add_client_frame, text="(*)Phone:")
+        client_phone_label.grid(row=4, column=0)
+        self.client_phone_entry = tk.Entry(add_client_frame)
+        self.client_phone_entry.grid(row=4, column=1)
+        
+        client_email_label = tk.Label(add_client_frame, text="(*)Email:")
+        client_email_label.grid(row=5, column=0)
+        self.client_email_entry = tk.Entry(add_client_frame)
+        self.client_email_entry.grid(row=5, column=1)
+
+        client_address_label = tk.Label(add_client_frame, text="Address:")
+        client_address_label.grid(row=6, column=0)
+        self.client_address_entry = tk.Entry(add_client_frame)
+        self.client_address_entry.grid(row=6, column=1)
+
+        client_comments_label = tk.Label(add_client_frame, text="Comments:")
+        client_comments_label.grid(row=8, column=0)
+        self.client_comments_entry = tk.Entry(add_client_frame)
+        self.client_comments_entry.grid(row=8, column=1)
+
+        submit_button = ttk.Button(add_client_frame, text="Add New Client", command=self.submit_user)
+        submit_button.grid(row=9, column=0, columnspan=2)
+
+    def submit_user(self):
+        forename = self.client_forename_entry.get()
+        surname = self.client_surname_entry.get()
+        DOB = self.client_dob_entry.get()
+        gender = self.gender_selection.get()
+        phone = self.client_phone_entry.get()
+        email = self.client_email_entry.get()
+        address = self.client_address_entry.get()
+        comments = self.client_comments_entry.get()
+
+        if not forename or not surname or not DOB or not gender:
+            messagebox.showerror("Error", "Fields marked with * are required!")
+            return
+        
+        if not (phone or email):
+            messagebox.showerror("Error", "Either a phone number or an email address is required!")
+            return
+
+        if not re.match(r'\d{2}/\d{2}/\d{4}', DOB):
+            messagebox.showerror("Error", "Invalid DOB format. Use dd/mm/yyyy")
+            return
+
+        if phone and not phone.isdigit():
+            messagebox.showerror("Error", "Phone number should only contain digits.")
+            return
+
+        if email and not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+            messagebox.showerror("Error", "Invalid email format.")
+            return
+
+        try:
+            self.connect_database()
+            self.cursor.execute("INSERT INTO client (client_forename, client_surname, client_DOB, client_gender, client_phone, client_email, client_address, client_comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (forename, surname, DOB, gender, phone, email, address, comments))
+            self.conn.commit()
+
+            for row in self.client_table.get_children():
+                self.client_table.delete(row)
+            self.fetch_and_display()
+
+            self.add_client_window.destroy()
+
+            messagebox.showinfo("Info", "Client added successfully!")
+
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+        finally:
+            self.conn.close()
+
+    def edit_client(self):
+        selected_items = self.client_table.selection()
+        if not selected_items:
+            messagebox.showwarning("Warning", "Please select a client to edit.")
+        elif len(selected_items) > 1:
+            messagebox.showwarning("Warning", "Multiple items selected, please only select one to edit.")
+        else:
+            client_id = selected_items[0]
+            self.connect_database()
+
+            try:
+                row = self.cursor.execute("SELECT * FROM client WHERE client_id=?", (client_id,)).fetchone()
+                if not row:
+                    messagebox.showwarning("Warning", "The selected client was not found.")
+                else:
+                    self.edit_client_window = tk.Toplevel(self)
+                    self.edit_client_window.title("Edit Client")
+                    self.edit_client_window.geometry("300x300")
+
+                    edit_client_frame = tk.Frame(self.edit_client_window)
+                    edit_client_frame.pack(padx=10, pady=10)
+
+                    client_forename_label = tk.Label(edit_client_frame, text="*Forename:")
+                    client_forename_label.grid(row=0, column=0)
+                    self.client_forename_entry = tk.Entry(edit_client_frame)
+                    self.client_forename_entry.grid(row=0, column=1)
+                    self.client_forename_entry.insert(0, row[1])
+
+                    client_surname_label = tk.Label(edit_client_frame, text="*Surname:")
+                    client_surname_label.grid(row=1, column=0)
+                    self.client_surname_entry = tk.Entry(edit_client_frame)
+                    self.client_surname_entry.grid(row=1, column=1)
+                    self.client_surname_entry.insert(0, row[2])
+
+                    client_dob_label = tk.Label(edit_client_frame, text="*DOB:")
+                    client_dob_label.grid(row=2, column=0)
+                    self.client_dob_entry = tk.Entry(edit_client_frame)
+                    self.client_dob_entry.grid(row=2, column=1)
+                    self.client_dob_entry.insert(0, row[3])
+
+                    self.gender_selection = tk.StringVar()
+                    client_gender_label = tk.Label(edit_client_frame, text="*Gender:")
+                    client_gender_label.grid(row=3, column=0)
+                    gender_options = ["", "Male", "Female", "Other"]
+                    selected_gender = row[4]
+                    gender_selection = tk.StringVar(value=selected_gender)
+                    client_gender_entry = ttk.OptionMenu(edit_client_frame, self.gender_selection, selected_gender, *gender_options)
+                    client_gender_entry.grid(row=3, column=1)
+
+                    client_phone_label = tk.Label(edit_client_frame, text="Phone:")
+                    client_phone_label.grid(row=4, column=0)
+                    self.client_phone_entry = tk.Entry(edit_client_frame)
+                    self.client_phone_entry.grid(row=4, column=1)
+                    self.client_phone_entry.insert(0, row[5])
+
+                    client_email_label = tk.Label(edit_client_frame, text="Email:")
+                    client_email_label.grid(row=5, column=0)
+                    self.client_email_entry = tk.Entry(edit_client_frame)
+                    self.client_email_entry.grid(row=5, column=1)
+                    self.client_email_entry.insert(0, row[6])
+
+                    client_address_label = tk.Label(edit_client_frame, text="Address:")
+                    client_address_label.grid(row=6, column=0)
+                    self.client_address_entry = tk.Entry(edit_client_frame)
+                    self.client_address_entry.grid(row=6, column=1)
+                    self.client_address_entry.insert(0, row[7])
+
+                    client_comments_label = tk.Label(edit_client_frame, text="Comments:")
+                    client_comments_label.grid(row=8, column=0)
+                    self.client_comments_entry = tk.Entry(edit_client_frame)
+                    self.client_comments_entry.grid(row=8, column=1)
+                    self.client_comments_entry.insert(0, row[8])
+
+                    submit_button = ttk.Button(edit_client_frame, text="Update Client", command=lambda: self.update_user(row[0]))
+                    submit_button.grid(row=9, column=0, columnspan=2)
+
+            except sqlite3.Error as e:
+                messagebox.showerror("Error", f"An error occurred: {e}")
+            finally:
+                self.conn.close()
+
+    def update_user(self, client_id):
+        forename = self.client_forename_entry.get()
+        surname = self.client_surname_entry.get()
+        DOB = self.client_dob_entry.get()
+        gender = self.gender_selection.get()
+        phone = self.client_phone_entry.get()
+        email = self.client_email_entry.get()
+        address = self.client_address_entry.get()
+        comments = self.client_comments_entry.get()
+
+        if not forename or not surname or not DOB or not gender:
+            messagebox.showerror("Error", "Fields marked with * are required!")
+            return
+
+        if not re.match(r'\d{2}/\d{2}/\d{4}', DOB):
+            messagebox.showerror("Error", "Invalid DOB format. Use dd/mm/yyyy")
+            return
+
+        if phone and not phone.isdigit():
+            messagebox.showerror("Error", "Phone number should only contain digits.")
+            return
+
+        if email and not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+            messagebox.showerror("Error", "Invalid email format.")
+            return
+
+        try:
+            self.connect_database()
+            self.cursor.execute("""
+                UPDATE client 
+                SET client_forename=?, client_surname=?, client_DOB=?, client_gender=?, client_phone=?, client_email=?, client_address=?, client_comments=? 
+                WHERE client_id=?
+            """, (forename, surname, DOB, gender, phone, email, address, comments, client_id))
+
+
+            self.conn.commit()
+
+            for row in self.client_table.get_children():
+                self.client_table.delete(row)
+            self.fetch_and_display()
+
+            self.edit_client_window.destroy()
+            messagebox.showinfo("Info", "Client updated successfully!")
+
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+        finally:
+            self.conn.close()
+
+    def delete_client(self):
+        selected_items = self.client_table.selection()
+
+        if not selected_items:
+            messagebox.showwarning("Warning", "Please select a client to delete.")
+            return
+
+        number_selected = len(selected_items)
+        confirm = messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete {number_selected} client(s)?")
+        if not confirm:
+            return
+
+        self.connect_database()
+
+        try:
+            for client_id in selected_items:
+                self.cursor.execute("DELETE FROM client WHERE client_id=?", (client_id,))
+                self.client_table.delete(client_id)
+
+            self.conn.commit()
+            messagebox.showinfo("Info", "Clients deleted successfully!")
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+        finally:
+            self.conn.close()
+
+    def select_all(self):
+        items = self.client_table.get_children()
+        for item in items:
+            self.client_table.selection_add(item)
+
+    def export_selected(self):
+        selected_items = self.client_table.selection()
+        if not selected_items:
+            messagebox.showwarning("Warning", "No clients selected for export.")
+            return
+        
+        self.connect_database()
+
+        try:
+            client_data = []
+            for client_id in selected_items:
+                row = self.cursor.execute("SELECT * FROM client WHERE client_id=?", (client_id,)).fetchone()
+                if row:
+                    client_data.append(row)
+
+    ### rewrite this code to be in own writing
+            if client_data:
+                df = pd.DataFrame(client_data, columns=["client_id", "client_forename", "client_surname", "client_DOB", "client_gender", "client_phone", "client_email", "client_address", "client_comments"])
+
+                file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel Files", "*.xlsx")])
+
+                if file_path:
+                    df.to_excel(file_path, index=False)
+                    messagebox.showinfo("Info", "Selected clients exported to Excel successfully!")
+
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+        finally:
+            self.conn.close()
+    ### end of rewrite code
+
 class staff_page(tk.Toplevel):
     def __init__(self, master=None):
         super().__init__(master)
@@ -158,7 +576,7 @@ class staff_page(tk.Toplevel):
 
         self.staff_table.column('Name', width=170)
         self.staff_table.column('Gender', width=50)
-        self.staff_table.column('DOB', width=75)
+        self.staff_table.column('DOB', width=70)
         self.staff_table.column('Status', width=120)
 
         self.staff_table.heading('Name', text='Name')
@@ -195,8 +613,8 @@ class staff_page(tk.Toplevel):
         self.cursor = self.conn.cursor()
 
     def fetch_and_display(self):
-### Make this either more complex or make this somehow better 30/10/23
-### Maybe change the || ' ' || to something more clear?
+    ### Make this either more complex or make this somehow better 30/10/23
+    ### Maybe change the || ' ' || to something more clear?
         self.connect_database()
         query = '''
         SELECT staff_id, staff_forename || ' ' || staff_surname AS Name, staff_gender AS Gender, staff_DOB AS DOB, staff_status AS Status
@@ -437,7 +855,7 @@ class staff_page(tk.Toplevel):
                     self.staff_address_entry.insert(0, row[7])
 
                     status_label = tk.Label(edit_staff_frame, text="Status:")
-                    status_label.grid(row=4, column=0)
+                    status_label.grid(row=7, column=0)
                     status_options = ["Currently Employed", "Previously Employed", "Not Employed", "Other"]
                     status_var = tk.StringVar(value=row[8])
                     status_entry = ttk.OptionMenu(edit_staff_frame, status_var, *status_options)
@@ -514,8 +932,8 @@ class staff_page(tk.Toplevel):
             messagebox.showwarning("Warning", "Please select staff members to delete.")
             return
 
-        num_selected = len(selected_items)
-        confirm = messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete {num_selected} staff member(s)?")
+        number_selected = len(selected_items)
+        confirm = messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete {number_selected} staff member(s)?")
         if not confirm:
             return
 
@@ -553,7 +971,7 @@ class staff_page(tk.Toplevel):
                 if row:
                     staff_data.append(row)
 
-### rewrite this code to be in own writing
+    ### rewrite this code to be in own writing
             if staff_data:
                 df = pd.DataFrame(staff_data, columns=["staff_id", "staff_forename", "staff_surname", "staff_DOB", "staff_gender", "staff_phone", "staff_email", "staff_address", "staff_status", "staff_comments"])
 

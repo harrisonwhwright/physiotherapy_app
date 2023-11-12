@@ -11,7 +11,7 @@ def setup_database():
         client_forename VARCHAR(50),
         client_surname VARCHAR(50),
         client_DOB DATE,
-        client_gender CHAR(1),
+        client_gender VARCHAR(6),
         client_phone VARCHAR(15),
         client_email VARCHAR(50),
         client_address VARCHAR(100),
