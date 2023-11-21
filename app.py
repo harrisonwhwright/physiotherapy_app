@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
+from tkcalendar import DateEntry
 import sqlite3
 import pandas as pd
 import bcrypt
@@ -93,14 +94,11 @@ class appointments_page(tk.Toplevel):
         self.geometry("500x600")
 
         heading = ttk.Frame(self)
-        heading.pack(pady=10, padx=10, anchor='w')
+        heading.pack(pady=10, padx=10)
 
-        self.logo = tk.PhotoImage(file='img_fit1sttherapy_logo.png').subsample(9, 9)
+        self.logo = tk.PhotoImage(file='img_fit1sttherapy_logo.png').subsample(12, 12)
         logo_label = ttk.Label(heading, image=self.logo)
-        logo_label.grid(row=0, column=1, padx=10, sticky='e')
-
-        title = ttk.Label(heading, text="Appointments")
-        title.grid(row=0, column=0, padx=10, sticky='w')
+        logo_label.grid(row=0, column=0, padx=10, pady=5)
 
         appointments_table = ttk.Treeview(self, columns=('Client Name', 'Staff Name', 'Service', 'Time & Date', 'Status'), show='headings', height=10)
 
@@ -123,7 +121,7 @@ class appointments_page(tk.Toplevel):
         view_appointment = ttk.Button(menu_frame, text="View")
         view_appointment.grid(row=0, column=0, padx=5)
 
-        add_appointment = ttk.Button(menu_frame, text="Add")
+        add_appointment = ttk.Button(menu_frame, text="Add", command=self.add_appointment)
         add_appointment.grid(row=0, column=1, padx=5)
 
         edit_appointment = ttk.Button(menu_frame, text="Edit")
@@ -143,6 +141,109 @@ class appointments_page(tk.Toplevel):
 
         services_button = ttk.Button(self, text="View and Edit services")
         services_button.pack(pady=10)
+
+    ### REWRITE OR SOMETHING IDK
+    def search_name(self, clients_names):
+        search_term = self.name_search_entry.get().lower()
+        filtered_clients = [client for client in clients_names if search_term in f"{client[1]} {client[2]}".lower()]
+        name_options = [f"{client[0]}, {client[1]} {client[2]}" for client in filtered_clients]
+        menu = self.appointment_name_entry["menu"]
+        menu.delete(0, "end")
+        for option in name_options:
+            menu.add_command(label=option, command=lambda value=option: self.name_selection.set(value))
+    ### END OF REWRITE
+
+    def add_appointment(self):
+        self.add_appointment_window = tk.Toplevel(self)
+        self.add_appointment_window.title("Add Appointment")
+        self.add_appointment_window.geometry("600x300")
+
+        add_appointment_frame = tk.Frame(self.add_appointment_window)
+        add_appointment_frame.pack(padx=10, pady=10)
+
+    ### GPT
+        appointment_client_name_label = tk.Label(add_appointment_frame, text="*Client Name:")
+        appointment_client_name_label.grid(row=0, column=0)
+        self.name_selection = tk.StringVar()
+        connection = sqlite3.connect("database.db")
+        cursor = connection.cursor()
+        cursor.execute("SELECT client_id, client_forename, client_surname FROM client")
+        clients_names = cursor.fetchall()
+        connection.close()
+        name_options = [""] + [f"{client[0]}, {client[1]} {client[2]}" for client in clients_names]
+        self.appointment_name_entry = ttk.OptionMenu(add_appointment_frame, self.name_selection, name_options[0], *name_options)
+        self.appointment_name_entry.grid(row=0, column=1)
+
+        self.name_search_entry = tk.Entry(add_appointment_frame)
+        self.name_search_entry.grid(row=1, column=1)
+        name_search_button = ttk.Button(add_appointment_frame, text="Search", command=lambda: self.search_name(clients_names))
+        name_search_button.grid(row=1, column=2)
+    ### GPT
+
+        blank_label = tk.Label(add_appointment_frame, text="")
+        blank_label.grid(row=2, column=0)
+        
+        #appointment_staff_name_label = tk.Label(add_appointment_frame, text="*Staff Member Assigned:")
+        #appointment_staff_name_label.grid(row=3, column=0)
+        #self.appointment_staff_name_entry = tk.Entry(add_appointment_frame)
+        #self.appointment_staff_name_entry.grid(row=3, column=1)
+
+        appointment_staff_name_label = tk.Label(add_appointment_frame, text="*Staff Member Assigned:")
+        appointment_staff_name_label.grid(row=3, column=0)
+        self.staff_name_selection = tk.StringVar()
+        connection = sqlite3.connect("database.db")
+        cursor = connection.cursor()
+        cursor.execute("SELECT staff_id, staff_forename, staff_surname FROM staff WHERE staff_status = 'Currently Employed'")
+        staff_names = cursor.fetchall()
+        connection.close()
+        staff_name_options = [""] + [f"{staff[0]}, {staff[1]} {staff[2]}" for staff in staff_names]
+        self.appointment_staff_name_entry = ttk.OptionMenu(add_appointment_frame, self.staff_name_selection, staff_name_options[0], *staff_name_options)
+        self.appointment_staff_name_entry.grid(row=3, column=1)
+
+        self.appointment_service_selection = tk.StringVar()
+        appointment_service_label = tk.Label(add_appointment_frame, text="*Service:")
+        appointment_service_label.grid(row=4, column=0)
+        service_options = ["", "a", "b", "c"]
+        appointment_service_entry = ttk.OptionMenu(add_appointment_frame, self.appointment_service_selection, service_options[0], *service_options)
+        appointment_service_entry.grid(row=4, column=1)
+
+        self.name_search_entry = tk.Entry(add_appointment_frame)
+        self.name_search_entry.grid(row=1, column=1)
+        name_search_button = ttk.Button(add_appointment_frame, text="Search", command=lambda: self.search_name(clients_names))
+        name_search_button.grid(row=1, column=2)
+
+        appointment_time_label = tk.Label(add_appointment_frame, text="24H Time in HH:MM")
+        appointment_time_label.grid(row=5, column=0)
+        self.appointment_time_entry = tk.Entry(add_appointment_frame)
+        self.appointment_time_entry.grid(row=5, column=1)
+
+        appointment_date_label = tk.Label(add_appointment_frame, text="Date as [dd-mm-yyyy]")
+        appointment_date_label.grid(row=6, column=0)
+        self.appointment_date_entry = DateEntry(add_appointment_frame, date_pattern="dd-mm-yyyy", width=10)
+        self.appointment_date_entry.grid(row=6, column=1)
+
+        self.status_selection = tk.StringVar()
+        appointment_status_label = tk.Label(add_appointment_frame, text="*Status:")
+        appointment_status_label.grid(row=7, column=0)
+        status_options = ["", "Upcoming", "Completed", "Cancelled"]
+        self.appointment_status_entry = ttk.OptionMenu(add_appointment_frame, self.status_selection, status_options[0], *status_options)
+        self.appointment_status_entry.grid(row=7, column=1)
+
+        appointment_comment_label = tk.Label(add_appointment_frame, text="Comment")
+        appointment_comment_label.grid(row=8, column=0)
+        self.appointment_comment_entry = tk.Entry(add_appointment_frame)
+        self.appointment_comment_entry.grid(row=8, column=1)
+
+        submit_button = ttk.Button(add_appointment_frame, text="Add New Appointment", command=self.submit_user)
+        submit_button.grid(row=9, column=0, columnspan=2)
+
+    def submit_user(self):
+        client_name = name_selection.get()
+        staff_name = staff_name_selection.get()
+        time = appointment_time_entry.get()
+        date = appointment_date_entry.get()
+        status = status_selection.get()
+        comment = appointment_comment_entry.get()
 
 class clients_page(tk.Toplevel):
     def __init__(self, master=None):
@@ -731,8 +832,8 @@ class staff_page(tk.Toplevel):
         staff_status_label = tk.Label(add_staff_frame, text="*Status:")
         staff_status_label.grid(row=7, column=0)
         status_options = ["Currently Employed", "Previously Employed", "Not Employed", "Other"]
-        status_entry = ttk.OptionMenu(add_staff_frame, self.status_selection, status_options[0], *status_options)
-        status_entry.grid(row=7, column=1)
+        self.status_entry = ttk.OptionMenu(add_staff_frame, self.status_selection, status_options[0], *status_options)
+        self.status_entry.grid(row=7, column=1)
 
         staff_comments_label = tk.Label(add_staff_frame, text="Comments:")
         staff_comments_label.grid(row=8, column=0)
@@ -833,8 +934,9 @@ class staff_page(tk.Toplevel):
                     gender_options = ["", "Male", "Female", "Other"]
                     selected_gender = row[4]
                     gender_selection = tk.StringVar(value=selected_gender)
-                    staff_gender_entry = ttk.OptionMenu(edit_staff_frame, gender_selection, selected_gender, *gender_options)
+                    staff_gender_entry = ttk.OptionMenu(edit_staff_frame, self.gender_selection, selected_gender, *gender_options)
                     staff_gender_entry.grid(row=3, column=1)
+                    
 
                     staff_phone_label = tk.Label(edit_staff_frame, text="Phone:")
                     staff_phone_label.grid(row=4, column=0)
@@ -854,12 +956,14 @@ class staff_page(tk.Toplevel):
                     self.staff_address_entry.grid(row=6, column=1)
                     self.staff_address_entry.insert(0, row[7])
 
-                    status_label = tk.Label(edit_staff_frame, text="Status:")
-                    status_label.grid(row=7, column=0)
+                    self.status_selection = tk.StringVar()
+                    staff_status_label = tk.Label(edit_staff_frame, text="*Status:")
+                    staff_status_label.grid(row=7, column=0)
                     status_options = ["Currently Employed", "Previously Employed", "Not Employed", "Other"]
-                    status_var = tk.StringVar(value=row[8])
-                    status_entry = ttk.OptionMenu(edit_staff_frame, status_var, *status_options)
-                    status_entry.grid(row=7, column=1)
+                    selected_status = row[8]
+                    status_selection = tk.StringVar(value=selected_status)
+                    staff_status_entry = ttk.OptionMenu(edit_staff_frame, self.status_selection, selected_status, *status_options)
+                    staff_status_entry.grid(row=7, column=1)
 
                     staff_comments_label = tk.Label(edit_staff_frame, text="Comments:")
                     staff_comments_label.grid(row=8, column=0)
@@ -885,6 +989,8 @@ class staff_page(tk.Toplevel):
         address = self.staff_address_entry.get()
         status = self.status_selection.get()
         comments = self.staff_comments_entry.get()
+
+        print(forename, surname, DOB, gender, phone, email, address, status, comments)
 
         if not forename or not surname or not DOB or not gender or not status:
             messagebox.showerror("Error", "Fields marked with * are required!")
