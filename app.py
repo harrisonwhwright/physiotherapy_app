@@ -91,7 +91,7 @@ class appointments_page(tk.Toplevel):
     def __init__(self, master=None):
         super().__init__(master)
         self.title("Appointments")
-        self.geometry("500x600")
+        self.geometry("600x600")
 
         heading = ttk.Frame(self)
         heading.pack(pady=10, padx=10)
@@ -100,20 +100,24 @@ class appointments_page(tk.Toplevel):
         logo_label = ttk.Label(heading, image=self.logo)
         logo_label.grid(row=0, column=0, padx=10, pady=5)
 
-        appointments_table = ttk.Treeview(self, columns=('Client Name', 'Staff Name', 'Service', 'Time & Date', 'Status'), show='headings', height=10)
+        self.appointments_table = ttk.Treeview(self, columns=('ID', 'Client Name', 'Staff Name', 'Service', 'Time & Date', 'Status'), show='headings', height=10)
 
-        appointments_table.column('Client Name', width=100)
-        appointments_table.column('Staff Name', width=100)
-        appointments_table.column('Service', width=75)
-        appointments_table.column('Time & Date', width=150)
-        appointments_table.column('Status', width=50)
+        self.appointments_table.column('ID', width=30)
+        self.appointments_table.column('Client Name', width=130)
+        self.appointments_table.column('Staff Name', width=130)
+        self.appointments_table.column('Service', width=75)
+        self.appointments_table.column('Time & Date', width=100)
+        self.appointments_table.column('Status', width=80)
 
-        appointments_table.heading('Client Name', text='Client Name')
-        appointments_table.heading('Staff Name', text='Staff Name')
-        appointments_table.heading('Service', text='Service')
-        appointments_table.heading('Time & Date', text='Time & Date')
-        appointments_table.heading('Status', text='Status')
-        appointments_table.pack(pady=20)
+        self.appointments_table.heading('ID', text='ID')
+        self.appointments_table.heading('Client Name', text='Client Name')
+        self.appointments_table.heading('Staff Name', text='Staff Name')
+        self.appointments_table.heading('Service', text='Service')
+        self.appointments_table.heading('Time & Date', text='Time & Date')
+        self.appointments_table.heading('Status', text='Status')
+        self.appointments_table.pack(pady=20)
+
+        self.fetch_and_display()
 
         menu_frame = ttk.Frame(self)
         menu_frame.pack(pady=10, padx=10)
@@ -142,6 +146,36 @@ class appointments_page(tk.Toplevel):
         services_button = ttk.Button(self, text="View and Edit services")
         services_button.pack(pady=10)
 
+    def connect_database(self):
+        self.conn = sqlite3.connect('database.db')
+        self.cursor = self.conn.cursor()
+
+    def fetch_and_display(self):
+        self.connect_database()
+        query = '''
+        SELECT
+            appointment.appointment_id,
+            client.client_forename || ' ' || client.client_surname AS client_name,
+            staff.staff_forename || ' ' || staff.staff_surname AS staff_name,
+            appointment.service_id,
+            appointment.appointment_session_time || ' ' || appointment.appointment_session_date AS session_datetime,
+            appointment.appointment_status,
+            appointment.appointment_comments
+        FROM
+            appointment
+            INNER JOIN client ON appointment.client_id = client.client_id
+            INNER JOIN staff ON appointment.staff_id = staff.staff_id
+        '''
+        rows = self.cursor.execute(query).fetchall()
+        
+        for item in self.appointments_table.get_children():
+            self.appointments_table.delete(item)
+        
+        for row in rows:
+            self.appointments_table.insert('', 'end', values=row)
+        
+        self.conn.close()
+
     ### REWRITE OR SOMETHING IDK
     def search_name(self, clients_names):
         search_term = self.name_search_entry.get().lower()
@@ -156,7 +190,7 @@ class appointments_page(tk.Toplevel):
     def add_appointment(self):
         self.add_appointment_window = tk.Toplevel(self)
         self.add_appointment_window.title("Add Appointment")
-        self.add_appointment_window.geometry("600x300")
+        self.add_appointment_window.geometry("400x300")
 
         add_appointment_frame = tk.Frame(self.add_appointment_window)
         add_appointment_frame.pack(padx=10, pady=10)
@@ -203,7 +237,7 @@ class appointments_page(tk.Toplevel):
         self.appointment_service_selection = tk.StringVar()
         appointment_service_label = tk.Label(add_appointment_frame, text="*Service:")
         appointment_service_label.grid(row=4, column=0)
-        service_options = ["", "a", "b", "c"]
+        service_options = ["", "legs", "arms", "back"]
         appointment_service_entry = ttk.OptionMenu(add_appointment_frame, self.appointment_service_selection, service_options[0], *service_options)
         appointment_service_entry.grid(row=4, column=1)
 
@@ -212,12 +246,12 @@ class appointments_page(tk.Toplevel):
         name_search_button = ttk.Button(add_appointment_frame, text="Search", command=lambda: self.search_name(clients_names))
         name_search_button.grid(row=1, column=2)
 
-        appointment_time_label = tk.Label(add_appointment_frame, text="24H Time in HH:MM")
+        appointment_time_label = tk.Label(add_appointment_frame, text="*24H Time in HH:MM")
         appointment_time_label.grid(row=5, column=0)
         self.appointment_time_entry = tk.Entry(add_appointment_frame)
         self.appointment_time_entry.grid(row=5, column=1)
 
-        appointment_date_label = tk.Label(add_appointment_frame, text="Date as [dd-mm-yyyy]")
+        appointment_date_label = tk.Label(add_appointment_frame, text="*Date as [dd-mm-yyyy]")
         appointment_date_label.grid(row=6, column=0)
         self.appointment_date_entry = DateEntry(add_appointment_frame, date_pattern="dd-mm-yyyy", width=10)
         self.appointment_date_entry.grid(row=6, column=1)
@@ -234,18 +268,49 @@ class appointments_page(tk.Toplevel):
         self.appointment_comment_entry = tk.Entry(add_appointment_frame)
         self.appointment_comment_entry.grid(row=8, column=1)
 
-        submit_button = ttk.Button(add_appointment_frame, text="Add New Appointment", command=self.submit_user)
+        submit_button = ttk.Button(add_appointment_frame, text="Add New Appointment", command=self.submit_appointment)
         submit_button.grid(row=9, column=0, columnspan=2)
 
-    def submit_user(self):
-        client_name = name_selection.get()
-        staff_name = staff_name_selection.get()
-        time = appointment_time_entry.get()
-        date = appointment_date_entry.get()
-        status = status_selection.get()
-        comment = appointment_comment_entry.get()
+    def submit_appointment(self):
+        client_name = self.name_selection.get()
+        staff_name = self.staff_name_selection.get()
+        service_name = self.appointment_service_selection.get()
+        time = self.appointment_time_entry.get()
+        date = self.appointment_date_entry.get()
+        status = self.status_selection.get()
+        comment = self.appointment_comment_entry.get()
+
+        if not client_name or not staff_name or not service_name or not time or not date or not status:
+            messagebox.showerror("Error", "Fields marked with * are required!")
+            return
+
+        connection = sqlite3.connect("database.db")
+        cursor = connection.cursor()
+
+        try:
+            client_id = int(client_name.split(",")[0])
+            staff_id = int(staff_name.split(",")[0])
+
+            cursor.execute('''
+                INSERT INTO appointment (client_id, staff_id, service_id, appointment_session_time, appointment_session_date, appointment_status, appointment_comments)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (client_id, staff_id, service_name, time, date, status, comment))
+
+            connection.commit()
+            connection.close()
+            messagebox.showinfo("Info", "Appointment added successfully!")
+
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+    ### check that this finally is present in other areas of my code
+        finally:
+            if connection:
+                connection.close()
+    ###
+
 
 class clients_page(tk.Toplevel):
+
     def __init__(self, master=None):
         super().__init__(master)
         self.title("Clients")
