@@ -122,7 +122,7 @@ class appointments_page(tk.Toplevel):
         menu_frame = ttk.Frame(self)
         menu_frame.pack(pady=10, padx=10)
 
-        view_appointment = ttk.Button(menu_frame, text="View")
+        view_appointment = ttk.Button(menu_frame, text="View", command=self.view_appointment)
         view_appointment.grid(row=0, column=0, padx=5)
 
         add_appointment = ttk.Button(menu_frame, text="Add", command=self.add_appointment)
@@ -131,19 +131,18 @@ class appointments_page(tk.Toplevel):
         edit_appointment = ttk.Button(menu_frame, text="Edit")
         edit_appointment.grid(row=0, column=2, padx=5)
 
-        delete_appointment = ttk.Button(menu_frame, text="Delete")
+        delete_appointment = ttk.Button(menu_frame, text="Delete", command=self.delete_appointment)
         delete_appointment.grid(row=0, column=3, padx=5)
 
-        export_frame = ttk.Frame(self)
-        export_frame.pack(pady=5)
+        exportall_button = ttk.Button(menu_frame, text="Select All", command=self.select_all)
+        exportall_button.grid(row=1, column=1, padx=5)
 
-        export_button = ttk.Button(export_frame, text="Export")
-        export_button.grid(row=0, column=0, padx=5)
+        export_button = ttk.Button(menu_frame, text="Export", command=self.export_selected)
+        export_button.grid(row=1, column=2, padx=5)
 
-        exportall_button = ttk.Button(export_frame, text="Export All")
-        exportall_button.grid(row=0, column=1, padx=5)
-
-        services_button = ttk.Button(self, text="View and Edit services")
+        services_frame = ttk.Frame(self)
+        services_frame.pack(pady=5)
+        services_button = ttk.Button(services_frame, text="View and Edit services")
         services_button.pack(pady=10)
 
     def connect_database(self):
@@ -175,6 +174,48 @@ class appointments_page(tk.Toplevel):
             self.appointments_table.insert('', 'end', values=row)
         
         self.conn.close()
+
+    def view_appointment(self):
+        selected_item = self.appointments_table.selection()
+        if not selected_item:
+            messagebox.showwarning("Warning", "Please select an appointment to view.")
+            return
+
+        values = self.appointments_table.item(selected_item, 'values')
+
+        appointment_id = values[0]
+
+        self.connect_database()
+
+        try:
+            query = '''
+            SELECT
+                appointment.appointment_id,
+                client.client_forename || ' ' || client.client_surname AS client_name,
+                staff.staff_forename || ' ' || staff.staff_surname AS staff_name,
+                appointment.service_id,
+                appointment.appointment_session_time AS session_time,
+                appointment.appointment_session_date AS session_date,
+                appointment.appointment_status,
+                appointment.appointment_comments
+            FROM
+                appointment
+                INNER JOIN client ON appointment.client_id = client.client_id
+                INNER JOIN staff ON appointment.staff_id = staff.staff_id
+            WHERE
+                appointment.appointment_id = ?
+            '''
+            row = self.cursor.execute(query, (appointment_id,)).fetchone()
+            print(row)
+            if not row:
+                messagebox.showwarning("Warning", "The selected appointment was not found.")
+                return
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+        finally:
+            self.conn.close()
+
+
 
     ### REWRITE OR SOMETHING IDK
     def search_name(self, clients_names):
@@ -299,6 +340,8 @@ class appointments_page(tk.Toplevel):
             connection.commit()
             connection.close()
             messagebox.showinfo("Info", "Appointment added successfully!")
+            self.add_appointment_window.destroy()
+            self.fetch_and_display()
 
         except sqlite3.Error as e:
             messagebox.showerror("Error", f"An error occurred: {e}")
@@ -307,6 +350,71 @@ class appointments_page(tk.Toplevel):
             if connection:
                 connection.close()
     ###
+
+    def delete_appointment(self):
+        selected_items = self.appointments_table.selection()
+
+        if not selected_items:
+            messagebox.showwarning("Warning", "Please select appointment(s) to delete.")
+            return
+
+        number_selected = len(selected_items)
+        confirm = messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete {number_selected} appointment(s)?")
+        if not confirm:
+            return
+
+        self.connect_database()
+
+        try:
+            for item in selected_items:
+                appointment_id = self.appointments_table.item(item, 'values')[0]
+                self.cursor.execute("DELETE FROM appointment WHERE appointment_id=?", (appointment_id,))
+                self.appointments_table.delete(item)
+
+            self.conn.commit()
+            messagebox.showinfo("Info", "Appointment(s) deleted successfully!")
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+        finally:
+            self.conn.close()
+
+    def select_all(self):
+        items = self.appointments_table.get_children()
+        for item in items:
+            self.appointments_table.selection_add(item)
+
+    def export_selected(self):
+        selected_items = self.appointments_table.selection()
+
+        if not selected_items:
+            messagebox.showwarning("Warning", "No appointments selected for export.")
+            return
+
+        self.connect_database()
+
+        try:
+            appointment_data = []
+            for item in selected_items:
+                # Extract the appointment_id from the item ID
+                appointment_id = self.appointments_table.item(item, 'values')[0]
+                row = self.cursor.execute("SELECT * FROM appointment WHERE appointment_id=?", (appointment_id,)).fetchone()
+                if row:
+                    appointment_data.append(row)
+
+            if appointment_data:
+                columns = ["appointment_id", "client_id", "staff_id", "service_id", "appointment_session_time", "appointment_session_date", "appointment_status", "appointment_comments"]
+                df = pd.DataFrame(appointment_data, columns=columns)
+
+                file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel Files", "*.xlsx")])
+
+                if file_path:
+                    df.to_excel(file_path, index=False)
+                    messagebox.showinfo("Info", "Selected appointment(s) exported to Excel successfully!")
+
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+        finally:
+            self.conn.close()
 
 
 class clients_page(tk.Toplevel):
