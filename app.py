@@ -6,102 +6,133 @@ import pandas as pd
 import bcrypt
 import re
 
+# This class displays the login window and handles all functions of logging in
 class loginWindow(tk.Tk):
     def __init__(self):
         super().__init__()
 
+        # Initialise a variable to track the current logged-in user
         current_logged_in_user = None
 
+        # Set up the login window
         self.title("Login")
         self.geometry("300x300")
 
+        # Display logo
         self.logo = tk.PhotoImage(file='img_fit1sttherapy_logo.png').subsample(9, 9)
         ttk.Label(self, image=self.logo).pack(pady=5)
 
+        # Create a frame to place the username and password entry boxes
         frame = ttk.Frame(self)
         frame.pack(pady=20)
 
+        # Username entry
         ttk.Label(frame, text="Username:").grid(row=0, column=0, padx=5, pady=5)
         self.username_entry = ttk.Entry(frame)
         self.username_entry.grid(row=0, column=1, padx=5, pady=5)
 
+        # Password entry
         ttk.Label(frame, text="Password:").grid(row=1, column=0, padx=5, pady=5)
         self.password_entry = ttk.Entry(frame, show="*")
         self.password_entry.grid(row=1, column=1, padx=5, pady=5)
 
+        # Login Button
         ttk.Button(self, text="Login", command=self.login).pack(pady=5)
 
     def login(self):
+        # Connect to the database
         self.conn = sqlite3.connect('database.db')
         self.cursor = self.conn.cursor()
 
+        # Retrive the username and password from the entry boxes
         username = self.username_entry.get()
         password = self.password_entry.get().encode('utf-8')
 
+        # Search the database and retrieve the password where the usernames match
         self.cursor.execute("SELECT password FROM login WHERE username=?", (username,))
         result = self.cursor.fetchone()
 
+        # Check to make sure that the password matches the one found in the database
         if result and bcrypt.checkpw(password, result[0]):
+            # If successful login, then assign the current logged in user
             current_logged_in_user = username
             self.destroy()
+            # Load up the main window for the program
             main_window = mainWindow()
             main_window.mainloop()
 
         else:
+            # Display an error message if the username and associated password do not match
             messagebox.showerror("Error", "incorrect username or password!")
 
+        # Close the database connection
         self.conn.close()
 
+# This class displays the main window and allows for navigation between the program's windows
 class mainWindow(tk.Tk):
     def __init__(self):
         super().__init__()
 
+        # Set up the main window
         self.title("Main Window")
         self.geometry("300x400")
 
+        # Display logo
         self.logo = tk.PhotoImage(file='img_fit1sttherapy_logo.png').subsample(6, 6)
         tk.Label(self, image=self.logo).pack(pady=5)
 
+        # Display all the buttons to allow for navigation between the program
         ttk.Button(self, text="Appointments", command=self.open_appointments).pack(pady=5)
         ttk.Button(self, text="Clients", command=self.open_clients).pack(pady=5)
         ttk.Button(self, text="Staff", command=self.open_staff).pack(pady=5)
-        ttk.Button(self, text="Transactions", command=self.WIP_window).pack(pady=5)
+        ttk.Button(self, text="Transactions", command=self.open_transactions).pack(pady=5)
     
+        # Display the button that allows the user to log out
         button_logout = ttk.Button(self, text="Logout", command=self.logout).pack(pady=5)
 
     def logout(self):
+        # Reset the current loggin-in user, then returns back to the login window
         current_logged_in_user = None
         self.destroy()
         app = loginWindow()
         app.mainloop()
 
     def open_appointments(self):
+        # Open the appointemnts page
         appointments_page(self)
     
     def open_clients(self):
+        # Open the clients page
         clients_page(self)
 
     def open_staff(self):
+        # Open the staff page
         staff_page(self)
 
-    def WIP_window(self):
+    def open_transactions(self):
+        # Open the transactions page
         pass
 
+# This class allows the user to create and interact with all stored appointents
 class appointments_page(tk.Toplevel):
     def __init__(self, master=None):
         super().__init__(master)
+        # Set up the main window
         self.title("Appointments")
         self.geometry("600x600")
 
+        #Create a heading frame to display the logo
         heading = ttk.Frame(self)
         heading.pack(pady=10, padx=10)
-
+        # Display logo
         self.logo = tk.PhotoImage(file='img_fit1sttherapy_logo.png').subsample(12, 12)
         logo_label = ttk.Label(heading, image=self.logo)
         logo_label.grid(row=0, column=0, padx=10, pady=5)
 
+        # Create the appointments display table
         self.appointments_table = ttk.Treeview(self, columns=('ID', 'Client Name', 'Staff Name', 'Service', 'Time & Date', 'Status'), show='headings', height=10)
 
+        # Create columns to the display table
         self.appointments_table.column('ID', width=30)
         self.appointments_table.column('Client Name', width=130)
         self.appointments_table.column('Staff Name', width=130)
@@ -109,6 +140,7 @@ class appointments_page(tk.Toplevel):
         self.appointments_table.column('Time & Date', width=100)
         self.appointments_table.column('Status', width=80)
 
+        # Give each column a heading in the display table
         self.appointments_table.heading('ID', text='ID')
         self.appointments_table.heading('Client Name', text='Client Name')
         self.appointments_table.heading('Staff Name', text='Staff Name')
@@ -117,18 +149,21 @@ class appointments_page(tk.Toplevel):
         self.appointments_table.heading('Status', text='Status')
         self.appointments_table.pack(pady=20)
 
+        # Fetch and display the appointments from the database
         self.fetch_and_display()
 
+        # Create the menu frame to display the buttons
         menu_frame = ttk.Frame(self)
         menu_frame.pack(pady=10, padx=10)
 
+        # Create and display the buttons
         view_appointment = ttk.Button(menu_frame, text="View", command=self.view_appointment)
         view_appointment.grid(row=0, column=0, padx=5)
 
         add_appointment = ttk.Button(menu_frame, text="Add", command=self.add_appointment)
         add_appointment.grid(row=0, column=1, padx=5)
 
-        edit_appointment = ttk.Button(menu_frame, text="Edit")
+        edit_appointment = ttk.Button(menu_frame, text="Edit", command=self.edit_appointment)
         edit_appointment.grid(row=0, column=2, padx=5)
 
         delete_appointment = ttk.Button(menu_frame, text="Delete", command=self.delete_appointment)
@@ -140,17 +175,22 @@ class appointments_page(tk.Toplevel):
         export_button = ttk.Button(menu_frame, text="Export", command=self.export_selected)
         export_button.grid(row=1, column=2, padx=5)
 
+        # Create a frame and display a button to access the services page
         services_frame = ttk.Frame(self)
         services_frame.pack(pady=5)
         services_button = ttk.Button(services_frame, text="View and Edit services")
         services_button.pack(pady=10)
 
     def connect_database(self):
+        # Establish a connection to the database
         self.conn = sqlite3.connect('database.db')
         self.cursor = self.conn.cursor()
 
     def fetch_and_display(self):
+        # Fetch appointments from the database and then display them in the table
         self.connect_database()
+        # Take the IDs stored in the appointents table and search the database
+        # This is done to retrieve the relevant inforamtion about the clients, staff, etc.
         query = '''
         SELECT
             appointment.appointment_id,
@@ -165,29 +205,37 @@ class appointments_page(tk.Toplevel):
             INNER JOIN client ON appointment.client_id = client.client_id
             INNER JOIN staff ON appointment.staff_id = staff.staff_id
         '''
+        # Retrieve every item from the appointment database 
         rows = self.cursor.execute(query).fetchall()
         
+        # Clear the existing rows in the display table
         for item in self.appointments_table.get_children():
             self.appointments_table.delete(item)
         
+        # Insert the rows from the database into the display table
         for row in rows:
             self.appointments_table.insert('', 'end', values=row)
         
+        # Close the database
         self.conn.close()
 
     def view_appointment(self):
+        # Retrieve the item that the user has selected
         selected_item = self.appointments_table.selection()
         if not selected_item:
+            # If no item has been selected then display a warning
             messagebox.showwarning("Warning", "Please select an appointment to view.")
             return
 
+        # Gets the appointment ID from the selected row
         values = self.appointments_table.item(selected_item, 'values')
-
         appointment_id = values[0]
 
+        # Connect to the database
         self.connect_database()
 
         try:
+            # Retrieve the appointment details for the selected ID
             query = '''
             SELECT
                 appointment.appointment_id,
@@ -206,75 +254,81 @@ class appointments_page(tk.Toplevel):
                 appointment.appointment_id = ?
             '''
             row = self.cursor.execute(query, (appointment_id,)).fetchone()
-            print(row)
             if not row:
+                # If no row is found then display a warning
                 messagebox.showwarning("Warning", "The selected appointment was not found.")
                 return
         except sqlite3.Error as e:
+            # If there is an error then display a warning
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
+            # Close the database connection
             self.conn.close()
 
-
-
-    ### REWRITE OR SOMETHING IDK
     def search_name(self, clients_names):
+        # Get the search term from the entery box
+        # Standardise by setting it to lowercase
         search_term = self.name_search_entry.get().lower()
+        # Filter the clients based on the search term in their names
+        # Then create a list of names for the list
         filtered_clients = [client for client in clients_names if search_term in f"{client[1]} {client[2]}".lower()]
         name_options = [f"{client[0]}, {client[1]} {client[2]}" for client in filtered_clients]
+        # Get the menu associated with the entry widget and clear the options
+        # Then add the new options to the list based on what the user entered
         menu = self.appointment_name_entry["menu"]
         menu.delete(0, "end")
         for option in name_options:
             menu.add_command(label=option, command=lambda value=option: self.name_selection.set(value))
-    ### END OF REWRITE
 
     def add_appointment(self):
+        # Set up the window to add an appointment
         self.add_appointment_window = tk.Toplevel(self)
         self.add_appointment_window.title("Add Appointment")
         self.add_appointment_window.geometry("400x300")
 
+        # Create the frame to organise the display table and buttons
         add_appointment_frame = tk.Frame(self.add_appointment_window)
         add_appointment_frame.pack(padx=10, pady=10)
 
-    ### GPT
+        # Create the client name label and entry
         appointment_client_name_label = tk.Label(add_appointment_frame, text="*Client Name:")
         appointment_client_name_label.grid(row=0, column=0)
         self.name_selection = tk.StringVar()
+        # Open the database and fetch the client names
         connection = sqlite3.connect("database.db")
         cursor = connection.cursor()
         cursor.execute("SELECT client_id, client_forename, client_surname FROM client")
         clients_names = cursor.fetchall()
+        # Close the database
         connection.close()
+        # Create a list for the different options the user has and display them
         name_options = [""] + [f"{client[0]}, {client[1]} {client[2]}" for client in clients_names]
         self.appointment_name_entry = ttk.OptionMenu(add_appointment_frame, self.name_selection, name_options[0], *name_options)
         self.appointment_name_entry.grid(row=0, column=1)
 
+        # Entry and submit button to search for client names
         self.name_search_entry = tk.Entry(add_appointment_frame)
         self.name_search_entry.grid(row=1, column=1)
         name_search_button = ttk.Button(add_appointment_frame, text="Search", command=lambda: self.search_name(clients_names))
         name_search_button.grid(row=1, column=2)
-    ### GPT
 
-        blank_label = tk.Label(add_appointment_frame, text="")
-        blank_label.grid(row=2, column=0)
-        
-        #appointment_staff_name_label = tk.Label(add_appointment_frame, text="*Staff Member Assigned:")
-        #appointment_staff_name_label.grid(row=3, column=0)
-        #self.appointment_staff_name_entry = tk.Entry(add_appointment_frame)
-        #self.appointment_staff_name_entry.grid(row=3, column=1)
-
+        # Create the staff name label and entry
         appointment_staff_name_label = tk.Label(add_appointment_frame, text="*Staff Member Assigned:")
         appointment_staff_name_label.grid(row=3, column=0)
         self.staff_name_selection = tk.StringVar()
+        # Open the database and fetch the staff names
         connection = sqlite3.connect("database.db")
         cursor = connection.cursor()
         cursor.execute("SELECT staff_id, staff_forename, staff_surname FROM staff WHERE staff_status = 'Currently Employed'")
         staff_names = cursor.fetchall()
+        # Close the database
         connection.close()
+        # Create a list for the different options the user has
         staff_name_options = [""] + [f"{staff[0]}, {staff[1]} {staff[2]}" for staff in staff_names]
         self.appointment_staff_name_entry = ttk.OptionMenu(add_appointment_frame, self.staff_name_selection, staff_name_options[0], *staff_name_options)
         self.appointment_staff_name_entry.grid(row=3, column=1)
 
+        # Widgets for selecting the service
         self.appointment_service_selection = tk.StringVar()
         appointment_service_label = tk.Label(add_appointment_frame, text="*Service:")
         appointment_service_label.grid(row=4, column=0)
@@ -282,21 +336,19 @@ class appointments_page(tk.Toplevel):
         appointment_service_entry = ttk.OptionMenu(add_appointment_frame, self.appointment_service_selection, service_options[0], *service_options)
         appointment_service_entry.grid(row=4, column=1)
 
-        self.name_search_entry = tk.Entry(add_appointment_frame)
-        self.name_search_entry.grid(row=1, column=1)
-        name_search_button = ttk.Button(add_appointment_frame, text="Search", command=lambda: self.search_name(clients_names))
-        name_search_button.grid(row=1, column=2)
-
+        # Widgets for selecting the time
         appointment_time_label = tk.Label(add_appointment_frame, text="*24H Time in HH:MM")
         appointment_time_label.grid(row=5, column=0)
         self.appointment_time_entry = tk.Entry(add_appointment_frame)
         self.appointment_time_entry.grid(row=5, column=1)
 
+        # Widgets for selecting the date
         appointment_date_label = tk.Label(add_appointment_frame, text="*Date as [dd-mm-yyyy]")
         appointment_date_label.grid(row=6, column=0)
         self.appointment_date_entry = DateEntry(add_appointment_frame, date_pattern="dd-mm-yyyy", width=10)
         self.appointment_date_entry.grid(row=6, column=1)
 
+        # Widgets for selecting the status
         self.status_selection = tk.StringVar()
         appointment_status_label = tk.Label(add_appointment_frame, text="*Status:")
         appointment_status_label.grid(row=7, column=0)
@@ -304,15 +356,18 @@ class appointments_page(tk.Toplevel):
         self.appointment_status_entry = ttk.OptionMenu(add_appointment_frame, self.status_selection, status_options[0], *status_options)
         self.appointment_status_entry.grid(row=7, column=1)
 
+        # Widgets for entering any additional commments
         appointment_comment_label = tk.Label(add_appointment_frame, text="Comment")
         appointment_comment_label.grid(row=8, column=0)
         self.appointment_comment_entry = tk.Entry(add_appointment_frame)
         self.appointment_comment_entry.grid(row=8, column=1)
 
+        # Button to submit a new appointment
         submit_button = ttk.Button(add_appointment_frame, text="Add New Appointment", command=self.submit_appointment)
         submit_button.grid(row=9, column=0, columnspan=2)
 
     def submit_appointment(self):
+        # Retrieve the values from the entry boxes
         client_name = self.name_selection.get()
         staff_name = self.staff_name_selection.get()
         service_name = self.appointment_service_selection.get()
@@ -321,40 +376,193 @@ class appointments_page(tk.Toplevel):
         status = self.status_selection.get()
         comment = self.appointment_comment_entry.get()
 
+        # Check to make sure that the required fields aren't empty
         if not client_name or not staff_name or not service_name or not time or not date or not status:
+            # If there is an error then display a warning
             messagebox.showerror("Error", "Fields marked with * are required!")
             return
 
+        # Connect to the database
         connection = sqlite3.connect("database.db")
         cursor = connection.cursor()
 
         try:
+            # Extract the selected client ID and staff ID
             client_id = int(client_name.split(",")[0])
             staff_id = int(staff_name.split(",")[0])
 
+            # Insert the appointment data into the database
             cursor.execute('''
                 INSERT INTO appointment (client_id, staff_id, service_id, appointment_session_time, appointment_session_date, appointment_status, appointment_comments)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', (client_id, staff_id, service_name, time, date, status, comment))
 
+            # Commit the changes to the database and then close
             connection.commit()
             connection.close()
+            # Display a message to the user
             messagebox.showinfo("Info", "Appointment added successfully!")
+            # Close the "add appointment" window and refresh the display table
             self.add_appointment_window.destroy()
             self.fetch_and_display()
 
         except sqlite3.Error as e:
+            # If there is an error then display a warning
             messagebox.showerror("Error", f"An error occurred: {e}")
-    ### check that this finally is present in other areas of my code
         finally:
+            # Make sure that the database is closed even if there is an exception
             if connection:
                 connection.close()
-    ###
+    
+
+    def edit_appointment(self):
+        # Retrieve the item that the user has selected
+        selected_items = self.appointments_table.selection()
+        if not selected_items:
+            # If there is an error then display a warning
+            messagebox.showwarning("Warning", "Please select an appointment to edit.")
+        elif len(selected_items) > 1:
+            # If there is an error then display a warning
+            messagebox.showwarning("Warning", "Multiple items selected, please only select one to edit.")
+        else:
+            # Get the appointment ID of the selected appointment
+            selected_item = selected_items[0]
+            values = self.appointments_table.item(selected_item, 'values')
+            appointment_id = values[0]
+
+            try:
+                # Connect to the database
+                self.connect_database()
+                # Retrieve the appointment details for the selected ID
+                query = '''
+                SELECT
+                    appointment.appointment_id,
+                    client.client_forename || ' ' || client.client_surname AS client_name,
+                    staff.staff_forename || ' ' || staff.staff_surname AS staff_name,
+                    appointment.service_id,
+                    appointment.appointment_session_time AS session_time,
+                    appointment.appointment_session_date AS session_date,
+                    appointment.appointment_status,
+                    appointment.appointment_comments
+                FROM
+                    appointment
+                    INNER JOIN client ON appointment.client_id = client.client_id
+                    INNER JOIN staff ON appointment.staff_id = staff.staff_id
+                WHERE
+                    appointment.appointment_id = ?
+                '''
+                row = self.cursor.execute(query, (appointment_id,)).fetchone()
+                if not row:
+                    # If there is an error then display a warning
+                    messagebox.showwarning("Warning", "The selected appointment was not found.")
+                    return
+                else:
+                    # Set up the window to edit an appointment
+                    self.edit_appointment_window = tk.Toplevel(self)
+                    self.edit_appointment_window.title("Edit Appointment")
+                    self.edit_appointment_window.geometry("350x300")
+
+                    # Create the frame to organise the display table and buttons
+                    edit_appointment_frame = tk.Frame(self.edit_appointment_window)
+                    edit_appointment_frame.pack(padx=10, pady=10)
+
+                    # Create the client name label and entry
+                    appointment_client_name_label = tk.Label(edit_appointment_frame, text="*Client Name:")
+                    appointment_client_name_label.grid(row=0, column=0)
+                    self.name_selection = tk.StringVar()
+                    connection = sqlite3.connect("database.db")
+                    # Open the database and fetch the client names
+                    cursor = connection.cursor()
+                    cursor.execute("SELECT client_id, client_forename, client_surname FROM client")
+                    clients_names = cursor.fetchall()
+                    # Close the database
+                    connection.close()
+                    # Create a list for the different options the user has and display them
+                    name_options = [row[1]] + [f"{client[0]}, {client[1]} {client[2]}" for client in clients_names]
+                    self.appointment_name_entry = ttk.OptionMenu(edit_appointment_frame, self.name_selection, name_options[0], *name_options)
+                    self.appointment_name_entry.grid(row=0, column=1)
+
+                    # Entry and submit button to search for client names
+                    self.name_search_entry = tk.Entry(edit_appointment_frame)
+                    self.name_search_entry.grid(row=1, column=1)
+                    name_search_button = ttk.Button(edit_appointment_frame, text="Search", command=lambda: self.search_name(clients_names))
+                    name_search_button.grid(row=1, column=2)
+
+                    # Create the staff name label and entry
+                    appointment_staff_name_label = tk.Label(edit_appointment_frame, text="*Staff Member Assigned:")
+                    appointment_staff_name_label.grid(row=3, column=0)
+                    self.staff_name_selection = tk.StringVar()
+                    # Open the database and fetch the staff names
+                    connection = sqlite3.connect("database.db")
+                    cursor = connection.cursor()
+                    cursor.execute("SELECT staff_id, staff_forename, staff_surname FROM staff WHERE staff_status = 'Currently Employed'")
+                    staff_names = cursor.fetchall()
+                    # Close the database
+                    connection.close()
+                    # Create a list for the different options the user has
+                    staff_name_options = [row[2]] + [f"{staff[0]}, {staff[1]} {staff[2]}" for staff in staff_names]
+                    self.appointment_staff_name_entry = ttk.OptionMenu(edit_appointment_frame, self.staff_name_selection, staff_name_options[0], *staff_name_options)
+                    self.appointment_staff_name_entry.grid(row=3, column=1)
+
+                    # Widgets for editing the service
+                    self.appointment_service_selection = tk.StringVar()
+                    appointment_service_label = tk.Label(edit_appointment_frame, text="*Service:")
+                    appointment_service_label.grid(row=4, column=0)
+                    service_options = ["", "legs", "arms", "back"]
+                    selected_service = row[3]
+                    service_selection = tk.StringVar(value=selected_service)
+                    appointment_service_entry = ttk.OptionMenu(edit_appointment_frame, self.appointment_service_selection, selected_service, *service_options)
+                    appointment_service_entry.grid(row=4, column=1)
+
+                    # Widgets for editing the time
+                    appointment_time_label = tk.Label(edit_appointment_frame, text="*24H Time in HH:MM")
+                    appointment_time_label.grid(row=5, column=0)
+                    self.appointment_time_entry = tk.Entry(edit_appointment_frame)
+                    self.appointment_time_entry.grid(row=5, column=1)
+                    self.appointment_time_entry.insert(0, row[4])
+
+                    # Widgets for editing the date
+                    appointment_date_label = tk.Label(edit_appointment_frame, text="*Date as [dd-mm-yyyy]")
+                    appointment_date_label.grid(row=6, column=0)
+                    self.appointment_date_entry_var = tk.StringVar(value=row[5])
+                    self.appointment_date_entry = DateEntry(edit_appointment_frame, date_pattern="dd-mm-yyyy", width=10, textvariable=self.appointment_date_entry_var)
+                    self.appointment_date_entry.grid(row=6, column=1)
+                    self.appointment_date_entry_var.set(row[5])
+
+                    # Widgets for editing the status
+                    self.status_selection = tk.StringVar()
+                    appointment_status_label = tk.Label(edit_appointment_frame, text="*Status:")
+                    appointment_status_label.grid(row=7, column=0)
+                    status_options = ["", "Upcoming", "Completed", "Cancelled"]
+                    selected_status = row[6]
+                    status_selection = tk.StringVar(value=selected_status)
+                    self.appointment_status_entry = ttk.OptionMenu(edit_appointment_frame, self.status_selection, selected_status, *status_options)
+                    self.appointment_status_entry.grid(row=7, column=1)
+
+                    # Widgets for editing the comments
+                    appointment_comment_label = tk.Label(edit_appointment_frame, text="Comment")
+                    appointment_comment_label.grid(row=8, column=0)
+                    self.appointment_comment_entry = tk.Entry(edit_appointment_frame)
+                    self.appointment_comment_entry.grid(row=8, column=1)
+                    self.appointment_comment_entry.insert(0, row[7])
+
+                    # Button to update the selected appointment
+                    submit_button = ttk.Button(edit_appointment_frame, text="Add New Appointment", command=self.submit_appointment)
+                    submit_button.grid(row=9, column=0, columnspan=2)                
+                    
+            except sqlite3.Error as e:
+                # If there is an error then display a warning
+                messagebox.showerror("Error", f"An error occurred: {e}")
+            finally:
+                # Close the database connection
+                self.cursor.close()
+                self.conn.close()
 
     def delete_appointment(self):
         selected_items = self.appointments_table.selection()
 
         if not selected_items:
+            # If there is an error then display a warning
             messagebox.showwarning("Warning", "Please select appointment(s) to delete.")
             return
 
@@ -374,6 +582,7 @@ class appointments_page(tk.Toplevel):
             self.conn.commit()
             messagebox.showinfo("Info", "Appointment(s) deleted successfully!")
         except sqlite3.Error as e:
+            # If there is an error then display a warning
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
             self.conn.close()
@@ -415,7 +624,6 @@ class appointments_page(tk.Toplevel):
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
             self.conn.close()
-
 
 class clients_page(tk.Toplevel):
 
@@ -1110,7 +1318,6 @@ class staff_page(tk.Toplevel):
                     staff_gender_entry = ttk.OptionMenu(edit_staff_frame, self.gender_selection, selected_gender, *gender_options)
                     staff_gender_entry.grid(row=3, column=1)
                     
-
                     staff_phone_label = tk.Label(edit_staff_frame, text="Phone:")
                     staff_phone_label.grid(row=4, column=0)
                     self.staff_phone_entry = tk.Entry(edit_staff_frame)
