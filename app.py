@@ -117,11 +117,11 @@ class mainWindow(tk.Tk):
 class appointments_page(tk.Toplevel):
     def __init__(self, master=None):
         super().__init__(master)
-        # Set up the main window
+        # Set up the appointments window
         self.title("Appointments")
         self.geometry("600x600")
 
-        #Create a heading frame to display the logo
+        # Create a heading frame to display the logo
         heading = ttk.Frame(self)
         heading.pack(pady=10, padx=10)
         # Display logo
@@ -230,7 +230,6 @@ class appointments_page(tk.Toplevel):
         # Gets the appointment ID from the selected row
         values = self.appointments_table.item(selected_item, 'values')
         appointment_id = values[0]
-
         # Connect to the database
         self.connect_database()
 
@@ -299,7 +298,7 @@ class appointments_page(tk.Toplevel):
         cursor = connection.cursor()
         cursor.execute("SELECT client_id, client_forename, client_surname FROM client")
         clients_names = cursor.fetchall()
-        # Close the database
+        # Close the database connection
         connection.close()
         # Create a list for the different options the user has and display them
         name_options = [""] + [f"{client[0]}, {client[1]} {client[2]}" for client in clients_names]
@@ -365,56 +364,7 @@ class appointments_page(tk.Toplevel):
         # Button to submit a new appointment
         submit_button = ttk.Button(add_appointment_frame, text="Add New Appointment", command=self.submit_appointment)
         submit_button.grid(row=9, column=0, columnspan=2)
-
-    def submit_appointment(self):
-        # Retrieve the values from the entry boxes
-        client_name = self.name_selection.get()
-        staff_name = self.staff_name_selection.get()
-        service_name = self.appointment_service_selection.get()
-        time = self.appointment_time_entry.get()
-        date = self.appointment_date_entry.get()
-        status = self.status_selection.get()
-        comment = self.appointment_comment_entry.get()
-
-        # Check to make sure that the required fields aren't empty
-        if not client_name or not staff_name or not service_name or not time or not date or not status:
-            # If there is an error then display a warning
-            messagebox.showerror("Error", "Fields marked with * are required!")
-            return
-
-        # Connect to the database
-        connection = sqlite3.connect("database.db")
-        cursor = connection.cursor()
-
-        try:
-            # Extract the selected client ID and staff ID
-            client_id = int(client_name.split(",")[0])
-            staff_id = int(staff_name.split(",")[0])
-
-            # Insert the appointment data into the database
-            cursor.execute('''
-                INSERT INTO appointment (client_id, staff_id, service_id, appointment_session_time, appointment_session_date, appointment_status, appointment_comments)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (client_id, staff_id, service_name, time, date, status, comment))
-
-            # Commit the changes to the database and then close
-            connection.commit()
-            connection.close()
-            # Display a message to the user
-            messagebox.showinfo("Info", "Appointment added successfully!")
-            # Close the "add appointment" window and refresh the display table
-            self.add_appointment_window.destroy()
-            self.fetch_and_display()
-
-        except sqlite3.Error as e:
-            # If there is an error then display a warning
-            messagebox.showerror("Error", f"An error occurred: {e}")
-        finally:
-            # Make sure that the database is closed even if there is an exception
-            if connection:
-                connection.close()
     
-
     def edit_appointment(self):
         # Retrieve the item that the user has selected
         selected_items = self.appointments_table.selection()
@@ -475,7 +425,7 @@ class appointments_page(tk.Toplevel):
                     cursor = connection.cursor()
                     cursor.execute("SELECT client_id, client_forename, client_surname FROM client")
                     clients_names = cursor.fetchall()
-                    # Close the database
+                    # Close the database connection
                     connection.close()
                     # Create a list for the different options the user has and display them
                     name_options = [row[1]] + [f"{client[0]}, {client[1]} {client[2]}" for client in clients_names]
@@ -497,7 +447,7 @@ class appointments_page(tk.Toplevel):
                     cursor = connection.cursor()
                     cursor.execute("SELECT staff_id, staff_forename, staff_surname FROM staff WHERE staff_status = 'Currently Employed'")
                     staff_names = cursor.fetchall()
-                    # Close the database
+                    # Close the database connection
                     connection.close()
                     # Create a list for the different options the user has
                     staff_name_options = [row[2]] + [f"{staff[0]}, {staff[1]} {staff[2]}" for staff in staff_names]
@@ -551,14 +501,63 @@ class appointments_page(tk.Toplevel):
                     submit_button.grid(row=9, column=0, columnspan=2)                
                     
             except sqlite3.Error as e:
-                # If there is an error then display a warning
+                # If there is an SQL error then display a warning
                 messagebox.showerror("Error", f"An error occurred: {e}")
             finally:
                 # Close the database connection
                 self.cursor.close()
                 self.conn.close()
 
+    def submit_appointment(self):
+        # Retrieve the values from the entry boxes
+        client_name = self.name_selection.get()
+        staff_name = self.staff_name_selection.get()
+        service_name = self.appointment_service_selection.get()
+        time = self.appointment_time_entry.get()
+        date = self.appointment_date_entry.get()
+        status = self.status_selection.get()
+        comment = self.appointment_comment_entry.get()
+
+        # Check to make sure that the required fields aren't empty
+        if not client_name or not staff_name or not service_name or not time or not date or not status:
+            # If there is an error then display a warning
+            messagebox.showerror("Error", "Fields marked with * are required!")
+            return
+
+        # Connect to the database
+        connection = sqlite3.connect("database.db")
+        cursor = connection.cursor()
+
+        try:
+            # Extract the selected client ID and staff ID
+            client_id = int(client_name.split(",")[0])
+            staff_id = int(staff_name.split(",")[0])
+
+            # Insert the appointment data into the database
+            cursor.execute('''
+                INSERT INTO appointment (client_id, staff_id, service_id, appointment_session_time, appointment_session_date, appointment_status, appointment_comments)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (client_id, staff_id, service_name, time, date, status, comment))
+
+            # Commit the changes to the database and then close
+            connection.commit()
+            connection.close()
+            # Display a message to the user
+            messagebox.showinfo("Info", "Appointment added successfully!")
+            # Close the "add appointment" window and refresh the display table
+            self.add_appointment_window.destroy()
+            self.fetch_and_display()
+
+        except sqlite3.Error as e:
+            # If there is an error then display a warning
+            messagebox.showerror("Error", f"An error occurred: {e}")
+        finally:
+            # Make sure that the database is closed even if there is an exception
+            if connection:
+                connection.close()
+
     def delete_appointment(self):
+        # Get the selected items from the appointments table
         selected_items = self.appointments_table.selection()
 
         if not selected_items:
@@ -566,81 +565,103 @@ class appointments_page(tk.Toplevel):
             messagebox.showwarning("Warning", "Please select appointment(s) to delete.")
             return
 
+        # Get the number of selected appointments
         number_selected = len(selected_items)
+        # Get user to confirm the deletion
         confirm = messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete {number_selected} appointment(s)?")
         if not confirm:
             return
 
+        # Connect to the database
         self.connect_database()
 
         try:
+            # Loop through the selected items and delete the associated item from the database
             for item in selected_items:
                 appointment_id = self.appointments_table.item(item, 'values')[0]
                 self.cursor.execute("DELETE FROM appointment WHERE appointment_id=?", (appointment_id,))
                 self.appointments_table.delete(item)
 
+            # Commit the changes to the database
             self.conn.commit()
             messagebox.showinfo("Info", "Appointment(s) deleted successfully!")
         except sqlite3.Error as e:
             # If there is an error then display a warning
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
+            # Close the database connection
             self.conn.close()
 
     def select_all(self):
+        # Get all the items in the appointments display table and show them as selected to the user
         items = self.appointments_table.get_children()
         for item in items:
             self.appointments_table.selection_add(item)
 
     def export_selected(self):
+        # Get the selected items from the appointments table
         selected_items = self.appointments_table.selection()
 
+        # Check if there are any appointments selected
         if not selected_items:
+            # If no appointment is selected then display a warning
             messagebox.showwarning("Warning", "No appointments selected for export.")
             return
 
+        # Connect to the database
         self.connect_database()
 
         try:
             appointment_data = []
+            # Retrieve the data for the selected appointments from the database
             for item in selected_items:
-                # Extract the appointment_id from the item ID
+                # Extract the appointment ID from the item ID
                 appointment_id = self.appointments_table.item(item, 'values')[0]
                 row = self.cursor.execute("SELECT * FROM appointment WHERE appointment_id=?", (appointment_id,)).fetchone()
                 if row:
                     appointment_data.append(row)
 
             if appointment_data:
+                # If there is selected appointments then export as a Microsoft Excel file (.xlsx)
                 columns = ["appointment_id", "client_id", "staff_id", "service_id", "appointment_session_time", "appointment_session_date", "appointment_status", "appointment_comments"]
                 df = pd.DataFrame(appointment_data, columns=columns)
 
+                # Allow the user to chose where to save the file by opening File Explorer
                 file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel Files", "*.xlsx")])
 
                 if file_path:
+                    # Save the data as an Microsoft Excel file
                     df.to_excel(file_path, index=False)
                     messagebox.showinfo("Info", "Selected appointment(s) exported to Excel successfully!")
 
         except sqlite3.Error as e:
+            # If there is an SQL error then display a warning
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
+            # Close the database connection
             self.conn.close()
 
+# This class allows the user to create and interact with all stored clients
 class clients_page(tk.Toplevel):
 
     def __init__(self, master=None):
         super().__init__(master)
+        # Set up the clients window
         self.title("Clients")
         self.geometry("550x600")
 
+        # Create a heading frame to display the logo
         heading = ttk.Frame(self)
         heading.pack(pady=10, padx=10)
-
+        # Display logo
         self.logo = tk.PhotoImage(file='img_fit1sttherapy_logo.png').subsample(12, 12)
         logo_label = ttk.Label(heading, image=self.logo)
         logo_label.grid(row=0, column=0, padx=10, pady=5)
 
+        # Create the clients display table
         self.client_table = ttk.Treeview(self, columns=('ID', 'Name', 'DOB', 'Gender', 'Email', 'Phone'), show='headings', height=14)
 
+        # Create columns to the display table
         self.client_table.column('ID', width=30)
         self.client_table.column('Name', width=120)
         self.client_table.column('DOB', width=70)
@@ -648,6 +669,7 @@ class clients_page(tk.Toplevel):
         self.client_table.column('Email', width=150)
         self.client_table.column('Phone', width=75)
 
+        # Give each column a heading in the display table
         self.client_table.heading('ID', text='ID')
         self.client_table.heading('Name', text='Name')
         self.client_table.heading('DOB', text='DOB')
@@ -656,9 +678,14 @@ class clients_page(tk.Toplevel):
         self.client_table.heading('Phone', text='Phone')
         self.client_table.pack(pady=20)
 
+        # Fetch and display the clients from the database
+        self.fetch_and_display()
+
+        # Create the menu frame to display the buttons
         menu_frame = ttk.Frame(self)
         menu_frame.pack(pady=10, padx=10)
 
+        # Create and display the buttons
         view_client = ttk.Button(menu_frame, text="View", command=self.view_client)
         view_client.grid(row=0, column=0, padx=5)
 
@@ -677,45 +704,57 @@ class clients_page(tk.Toplevel):
         export_button = ttk.Button(menu_frame, text="Export Selected", command=self.export_selected)
         export_button.grid(row=2, column=2, padx=5, pady=10)
 
-        self.fetch_and_display()
-
     def connect_database(self):
+        # Establish a connection to the database
         self.conn = sqlite3.connect('database.db')
         self.cursor = self.conn.cursor()
 
     def fetch_and_display(self):
+        # Fetch the clients from the database and then display them in the table
         self.connect_database()
+        # Take the client IDs stored in the clients table and search the database
         query = '''
         SELECT client_id, client_forename || ' ' || client_surname AS Name, client_DOB AS DOB, client_gender AS Gender, client_email AS Email, client_phone as Phone
         FROM client
         ORDER BY Name
         '''
+        # Insert the rows from the database into the clients display table
         rows = self.cursor.execute(query).fetchall()
         for row in rows:
             self.client_table.insert("", "end", iid=row[0], values=row) 
 
     def view_client(self):
+        # Retrieve the item that the user has selected
         selected_item = self.client_table.selection()
         if not selected_item:
+            # If no item has been selected then display a warning
             messagebox.showwarning("Warning", "Please select a client to view.")
             return
 
+        # Gets the client ID from the selected row
         client_id = selected_item[0]
+        # Connect to the database
         self.connect_database()
 
         try:
+            # Retrieve the associated client details for the selected ID
             row = self.cursor.execute("SELECT * FROM client WHERE client_id=?", (client_id,)).fetchone()
+            # Check if a row has been retrieved
             if not row:
+                # If no row has been selected then display a warning
                 messagebox.showwarning("Warning", "The selected client was not found.")
                 return
 
+            # Set up a new window to view the client details
             self.view_client_window = tk.Toplevel(self)
             self.view_client_window.title("View Client")
             self.view_client_window.geometry("300x300")
 
+            # Create a frame to display the clients details
             view_client_frame = tk.Frame(self.view_client_window)
             view_client_frame.pack(padx=10, pady=10)
 
+            # Create and display the labels and data from the selected client ID
             client_forename_label = tk.Label(view_client_frame, text="Client ID: " + str(row[0]))
             client_forename_label.grid(row=0, column=0)
 
@@ -744,33 +783,42 @@ class clients_page(tk.Toplevel):
             client_comments_label.grid(row=8, column=0)
         
         except sqlite3.Error as e:
+            # If there is an SQL error then display a warning
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
+            # Close the database connection
             self.conn.close()
 
     def add_client(self):
+        # Set up the window to add a client
         self.add_client_window = tk.Toplevel(self)
         self.add_client_window.title("Add Client")
         self.add_client_window.geometry("300x300")
 
+        # Create the frame to organise the display table and buttons
         add_client_frame = tk.Frame(self.add_client_window)
         add_client_frame.pack(padx=10, pady=10)
 
+        # Create the label and entry boxes for the user to input data
+        # Widgets for client forename
         client_forename_label = tk.Label(add_client_frame, text="*Forename:")
         client_forename_label.grid(row=0, column=0)
         self.client_forename_entry = tk.Entry(add_client_frame)
         self.client_forename_entry.grid(row=0, column=1)
         
+        # Widgets for client surname
         client_surname_label = tk.Label(add_client_frame, text="*Surname:")
         client_surname_label.grid(row=1, column=0)
         self.client_surname_entry = tk.Entry(add_client_frame)
         self.client_surname_entry.grid(row=1, column=1)
         
+        # Widgets for client DOB
         client_dob_label = tk.Label(add_client_frame, text="*DOB:")
         client_dob_label.grid(row=2, column=0)
         self.client_dob_entry = tk.Entry(add_client_frame)
         self.client_dob_entry.grid(row=2, column=1)
 
+        # Widgets for client gender
         self.gender_selection = tk.StringVar()
         client_gender_label = tk.Label(add_client_frame, text="*Gender:")
         client_gender_label.grid(row=3, column=0)
@@ -778,30 +826,36 @@ class clients_page(tk.Toplevel):
         gender_entry = ttk.OptionMenu(add_client_frame, self.gender_selection, gender_options[0], *gender_options)
         gender_entry.grid(row=3, column=1)
 
+        # Widgets for client phone
         client_phone_label = tk.Label(add_client_frame, text="(*)Phone:")
         client_phone_label.grid(row=4, column=0)
         self.client_phone_entry = tk.Entry(add_client_frame)
         self.client_phone_entry.grid(row=4, column=1)
         
+        # Widgets for client email
         client_email_label = tk.Label(add_client_frame, text="(*)Email:")
         client_email_label.grid(row=5, column=0)
         self.client_email_entry = tk.Entry(add_client_frame)
         self.client_email_entry.grid(row=5, column=1)
 
+        # Widgets for client address
         client_address_label = tk.Label(add_client_frame, text="Address:")
         client_address_label.grid(row=6, column=0)
         self.client_address_entry = tk.Entry(add_client_frame)
         self.client_address_entry.grid(row=6, column=1)
 
+        # Widgets for client comments
         client_comments_label = tk.Label(add_client_frame, text="Comments:")
         client_comments_label.grid(row=8, column=0)
         self.client_comments_entry = tk.Entry(add_client_frame)
         self.client_comments_entry.grid(row=8, column=1)
 
-        submit_button = ttk.Button(add_client_frame, text="Add New Client", command=self.submit_user)
+        # Button to create a new appointment
+        submit_button = ttk.Button(add_client_frame, text="Add New Client", command=self.submit_client)
         submit_button.grid(row=9, column=0, columnspan=2)
 
-    def submit_user(self):
+    def submit_client(self):
+        # Retrieve the values from the entry boxes
         forename = self.client_forename_entry.get()
         surname = self.client_surname_entry.get()
         DOB = self.client_dob_entry.get()
@@ -811,84 +865,109 @@ class clients_page(tk.Toplevel):
         address = self.client_address_entry.get()
         comments = self.client_comments_entry.get()
 
+        # Check to make sure that the required fields aren't empty
         if not forename or not surname or not DOB or not gender:
+            # If all the inputs aren't present then display a warning
             messagebox.showerror("Error", "Fields marked with * are required!")
             return
         
         if not (phone or email):
+            # If there is no phone number and email address then display a warning
             messagebox.showerror("Error", "Either a phone number or an email address is required!")
             return
 
         if not re.match(r'\d{2}/\d{2}/\d{4}', DOB):
+            # If there is an error then display a warning
             messagebox.showerror("Error", "Invalid DOB format. Use dd/mm/yyyy")
             return
 
         if phone and not phone.isdigit():
+            # If there is an error then display a warning
             messagebox.showerror("Error", "Phone number should only contain digits.")
             return
 
         if email and not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+            # If the email is in the incorrect format display a warning
             messagebox.showerror("Error", "Invalid email format.")
             return
 
         try:
+            # Connnect to the database
             self.connect_database()
+            # Add a new client into the table
             self.cursor.execute("INSERT INTO client (client_forename, client_surname, client_DOB, client_gender, client_phone, client_email, client_address, client_comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (forename, surname, DOB, gender, phone, email, address, comments))
+            # Commit the changes to the database
             self.conn.commit()
 
+            # Clear all the rows and then fetch and display the information to the display table
             for row in self.client_table.get_children():
                 self.client_table.delete(row)
             self.fetch_and_display()
 
+            # Close the add client window
             self.add_client_window.destroy()
 
+            # Display message to the user to confirm
             messagebox.showinfo("Info", "Client added successfully!")
 
         except sqlite3.Error as e:
+            # If there is an SQL error then display a warning
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
+            # Close the database connection
             self.conn.close()
 
     def edit_client(self):
+        # Retrieve the item that the user has selected
         selected_items = self.client_table.selection()
         if not selected_items:
+            # If there is an error then display a warning
             messagebox.showwarning("Warning", "Please select a client to edit.")
         elif len(selected_items) > 1:
+            # If there is an error then display a warning
             messagebox.showwarning("Warning", "Multiple items selected, please only select one to edit.")
         else:
+            # Get the client ID of the selected client
             client_id = selected_items[0]
             self.connect_database()
 
             try:
                 row = self.cursor.execute("SELECT * FROM client WHERE client_id=?", (client_id,)).fetchone()
                 if not row:
+                    # If there isnt a row then display a warning
                     messagebox.showwarning("Warning", "The selected client was not found.")
                 else:
+                    # Set up the window to edit a client
                     self.edit_client_window = tk.Toplevel(self)
                     self.edit_client_window.title("Edit Client")
                     self.edit_client_window.geometry("300x300")
 
+                    # Create the frame to organise the display table and buttons
                     edit_client_frame = tk.Frame(self.edit_client_window)
                     edit_client_frame.pack(padx=10, pady=10)
 
+                    # Create the client surname label and entry and insert the associated infomation
                     client_forename_label = tk.Label(edit_client_frame, text="*Forename:")
                     client_forename_label.grid(row=0, column=0)
                     self.client_forename_entry = tk.Entry(edit_client_frame)
                     self.client_forename_entry.grid(row=0, column=1)
                     self.client_forename_entry.insert(0, row[1])
 
+                    # Create the client surname label and entry and insert the associated infomation
                     client_surname_label = tk.Label(edit_client_frame, text="*Surname:")
                     client_surname_label.grid(row=1, column=0)
                     self.client_surname_entry = tk.Entry(edit_client_frame)
                     self.client_surname_entry.grid(row=1, column=1)
                     self.client_surname_entry.insert(0, row[2])
 
+                    # Create the client surname label and entry and insert the associated infomation
                     client_dob_label = tk.Label(edit_client_frame, text="*DOB:")
                     client_dob_label.grid(row=2, column=0)
                     self.client_dob_entry = tk.Entry(edit_client_frame)
                     self.client_dob_entry.grid(row=2, column=1)
                     self.client_dob_entry.insert(0, row[3])
 
+                    # Create the client surname label and entry and insert the associated infomation
                     self.gender_selection = tk.StringVar()
                     client_gender_label = tk.Label(edit_client_frame, text="*Gender:")
                     client_gender_label.grid(row=3, column=0)
@@ -898,39 +977,46 @@ class clients_page(tk.Toplevel):
                     client_gender_entry = ttk.OptionMenu(edit_client_frame, self.gender_selection, selected_gender, *gender_options)
                     client_gender_entry.grid(row=3, column=1)
 
+                    # Create the client surname label and entry and insert the associated infomation
                     client_phone_label = tk.Label(edit_client_frame, text="Phone:")
                     client_phone_label.grid(row=4, column=0)
                     self.client_phone_entry = tk.Entry(edit_client_frame)
                     self.client_phone_entry.grid(row=4, column=1)
                     self.client_phone_entry.insert(0, row[5])
 
+                    # Create the client surname label and entry and insert the associated infomation
                     client_email_label = tk.Label(edit_client_frame, text="Email:")
                     client_email_label.grid(row=5, column=0)
                     self.client_email_entry = tk.Entry(edit_client_frame)
                     self.client_email_entry.grid(row=5, column=1)
                     self.client_email_entry.insert(0, row[6])
 
+                    # Create the client surname label and entry and insert the associated infomation
                     client_address_label = tk.Label(edit_client_frame, text="Address:")
                     client_address_label.grid(row=6, column=0)
                     self.client_address_entry = tk.Entry(edit_client_frame)
                     self.client_address_entry.grid(row=6, column=1)
                     self.client_address_entry.insert(0, row[7])
 
+                    # Create the client comments and entry and insert the associated infomation
                     client_comments_label = tk.Label(edit_client_frame, text="Comments:")
                     client_comments_label.grid(row=8, column=0)
                     self.client_comments_entry = tk.Entry(edit_client_frame)
                     self.client_comments_entry.grid(row=8, column=1)
                     self.client_comments_entry.insert(0, row[8])
 
-                    submit_button = ttk.Button(edit_client_frame, text="Update Client", command=lambda: self.update_user(row[0]))
+                    # Button to update the selected client
+                    submit_button = ttk.Button(edit_client_frame, text="Update Client", command=lambda: self.update_client(row[0]))
                     submit_button.grid(row=9, column=0, columnspan=2)
 
             except sqlite3.Error as e:
+                # If there is an SQL error then display a warning
                 messagebox.showerror("Error", f"An error occurred: {e}")
             finally:
+                # Close the database connection
                 self.conn.close()
 
-    def update_user(self, client_id):
+    def update_client(self, client_id):
         forename = self.client_forename_entry.get()
         surname = self.client_surname_entry.get()
         DOB = self.client_dob_entry.get()
@@ -1221,10 +1307,10 @@ class staff_page(tk.Toplevel):
         self.staff_comments_entry = tk.Entry(add_staff_frame)
         self.staff_comments_entry.grid(row=8, column=1)
 
-        submit_button = ttk.Button(add_staff_frame, text="Add New Staff Member", command=self.submit_user)
+        submit_button = ttk.Button(add_staff_frame, text="Add New Staff Member", command=self.submit_staff)
         submit_button.grid(row=9, column=0, columnspan=2)
 
-    def submit_user(self):
+    def submit_staff(self):
         forename = self.staff_forename_entry.get()
         surname = self.staff_surname_entry.get()
         DOB = self.staff_dob_entry.get()
@@ -1351,7 +1437,7 @@ class staff_page(tk.Toplevel):
                     self.staff_comments_entry.grid(row=8, column=1)
                     self.staff_comments_entry.insert(0, row[9])
 
-                    submit_button = ttk.Button(edit_staff_frame, text="Update Staff Member", command=lambda: self.update_user(row[0]))
+                    submit_button = ttk.Button(edit_staff_frame, text="Update Staff Member", command=lambda: self.update_staff(row[0]))
                     submit_button.grid(row=9, column=0, columnspan=2)
 
             except sqlite3.Error as e:
@@ -1359,7 +1445,7 @@ class staff_page(tk.Toplevel):
             finally:
                 self.conn.close()
 
-    def update_user(self, staff_id):
+    def update_staff(self, staff_id):
         forename = self.staff_forename_entry.get()
         surname = self.staff_surname_entry.get()
         DOB = self.staff_dob_entry.get()
