@@ -497,7 +497,7 @@ class appointments_page(tk.Toplevel):
                     self.appointment_comment_entry.insert(0, row[7])
 
                     # Button to update the selected appointment
-                    submit_button = ttk.Button(edit_appointment_frame, text="Add New Appointment", command=self.submit_appointment)
+                    submit_button = ttk.Button(edit_appointment_frame, text="Update Appointment", command=self.submit_appointment)
                     submit_button.grid(row=9, column=0, columnspan=2)                
                     
             except sqlite3.Error as e:
@@ -576,7 +576,7 @@ class appointments_page(tk.Toplevel):
         self.connect_database()
 
         try:
-            # Loop through the selected items and delete the associated item from the database
+            # Loop through the selected items and delete the associated item from the appointments database
             for item in selected_items:
                 appointment_id = self.appointments_table.item(item, 'values')[0]
                 self.cursor.execute("DELETE FROM appointment WHERE appointment_id=?", (appointment_id,))
@@ -584,9 +584,10 @@ class appointments_page(tk.Toplevel):
 
             # Commit the changes to the database
             self.conn.commit()
+            # If done correctly then show a sucess message to the user
             messagebox.showinfo("Info", "Appointment(s) deleted successfully!")
         except sqlite3.Error as e:
-            # If there is an error then display a warning
+            # If there is an SQL error then display a warning
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
             # Close the database connection
@@ -630,8 +631,9 @@ class appointments_page(tk.Toplevel):
                 file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel Files", "*.xlsx")])
 
                 if file_path:
-                    # Save the data as an Microsoft Excel file
+                    # Save the data as a Microsoft Excel file
                     df.to_excel(file_path, index=False)
+                    # If successful then display a message to the user
                     messagebox.showinfo("Info", "Selected appointment(s) exported to Excel successfully!")
 
         except sqlite3.Error as e:
@@ -643,7 +645,6 @@ class appointments_page(tk.Toplevel):
 
 # This class allows the user to create and interact with all stored clients
 class clients_page(tk.Toplevel):
-
     def __init__(self, master=None):
         super().__init__(master)
         # Set up the clients window
@@ -653,7 +654,7 @@ class clients_page(tk.Toplevel):
         # Create a heading frame to display the logo
         heading = ttk.Frame(self)
         heading.pack(pady=10, padx=10)
-        # Display logo
+        # Display the logo
         self.logo = tk.PhotoImage(file='img_fit1sttherapy_logo.png').subsample(12, 12)
         logo_label = ttk.Label(heading, image=self.logo)
         logo_label.grid(row=0, column=0, padx=10, pady=5)
@@ -711,8 +712,9 @@ class clients_page(tk.Toplevel):
 
     def fetch_and_display(self):
         # Fetch the clients from the database and then display them in the table
+        #  Connect to the database
         self.connect_database()
-        # Take the client IDs stored in the clients table and search the database
+        # This query takes the client IDs stored in the clients table and searches the database
         query = '''
         SELECT client_id, client_forename || ' ' || client_surname AS Name, client_DOB AS DOB, client_gender AS Gender, client_email AS Email, client_phone as Phone
         FROM client
@@ -724,10 +726,10 @@ class clients_page(tk.Toplevel):
             self.client_table.insert("", "end", iid=row[0], values=row) 
 
     def view_client(self):
-        # Retrieve the item that the user has selected
+        # Retrieve the client that the user has selected
         selected_item = self.client_table.selection()
         if not selected_item:
-            # If no item has been selected then display a warning
+            # If no client has been selected then display a warning
             messagebox.showwarning("Warning", "Please select a client to view.")
             return
 
@@ -737,7 +739,7 @@ class clients_page(tk.Toplevel):
         self.connect_database()
 
         try:
-            # Retrieve the associated client details for the selected ID
+            # Retrieve the associated client details from the database for the selected client ID
             row = self.cursor.execute("SELECT * FROM client WHERE client_id=?", (client_id,)).fetchone()
             # Check if a row has been retrieved
             if not row:
@@ -800,25 +802,25 @@ class clients_page(tk.Toplevel):
         add_client_frame.pack(padx=10, pady=10)
 
         # Create the label and entry boxes for the user to input data
-        # Widgets for client forename
+        # Widgets for client forename entry
         client_forename_label = tk.Label(add_client_frame, text="*Forename:")
         client_forename_label.grid(row=0, column=0)
         self.client_forename_entry = tk.Entry(add_client_frame)
         self.client_forename_entry.grid(row=0, column=1)
         
-        # Widgets for client surname
+        # Widgets for client surname entry
         client_surname_label = tk.Label(add_client_frame, text="*Surname:")
         client_surname_label.grid(row=1, column=0)
         self.client_surname_entry = tk.Entry(add_client_frame)
         self.client_surname_entry.grid(row=1, column=1)
         
-        # Widgets for client DOB
+        # Widgets for client DOB entry
         client_dob_label = tk.Label(add_client_frame, text="*DOB:")
         client_dob_label.grid(row=2, column=0)
         self.client_dob_entry = tk.Entry(add_client_frame)
         self.client_dob_entry.grid(row=2, column=1)
 
-        # Widgets for client gender
+        # Widgets for client gender entry
         self.gender_selection = tk.StringVar()
         client_gender_label = tk.Label(add_client_frame, text="*Gender:")
         client_gender_label.grid(row=3, column=0)
@@ -826,25 +828,25 @@ class clients_page(tk.Toplevel):
         gender_entry = ttk.OptionMenu(add_client_frame, self.gender_selection, gender_options[0], *gender_options)
         gender_entry.grid(row=3, column=1)
 
-        # Widgets for client phone
+        # Widgets for client phone entry
         client_phone_label = tk.Label(add_client_frame, text="(*)Phone:")
         client_phone_label.grid(row=4, column=0)
         self.client_phone_entry = tk.Entry(add_client_frame)
         self.client_phone_entry.grid(row=4, column=1)
         
-        # Widgets for client email
+        # Widgets for client email entry
         client_email_label = tk.Label(add_client_frame, text="(*)Email:")
         client_email_label.grid(row=5, column=0)
         self.client_email_entry = tk.Entry(add_client_frame)
         self.client_email_entry.grid(row=5, column=1)
 
-        # Widgets for client address
+        # Widgets for client address entry
         client_address_label = tk.Label(add_client_frame, text="Address:")
         client_address_label.grid(row=6, column=0)
         self.client_address_entry = tk.Entry(add_client_frame)
         self.client_address_entry.grid(row=6, column=1)
 
-        # Widgets for client comments
+        # Widgets for client comments entry
         client_comments_label = tk.Label(add_client_frame, text="Comments:")
         client_comments_label.grid(row=8, column=0)
         self.client_comments_entry = tk.Entry(add_client_frame)
@@ -871,21 +873,25 @@ class clients_page(tk.Toplevel):
             messagebox.showerror("Error", "Fields marked with * are required!")
             return
         
+        # Check to make sure that either a phone or email is present
         if not (phone or email):
             # If there is no phone number and email address then display a warning
             messagebox.showerror("Error", "Either a phone number or an email address is required!")
             return
 
+        # Check to make sure that the dates are in the correct day-month-year format
         if not re.match(r'\d{2}/\d{2}/\d{4}', DOB):
             # If there is an error then display a warning
             messagebox.showerror("Error", "Invalid DOB format. Use dd/mm/yyyy")
             return
 
+        # Check to make sure that the phone number is digits only
         if phone and not phone.isdigit():
             # If there is an error then display a warning
             messagebox.showerror("Error", "Phone number should only contain digits.")
             return
 
+        # Check to make sure that the email is in the correct format
         if email and not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
             # If the email is in the incorrect format display a warning
             messagebox.showerror("Error", "Invalid email format.")
@@ -907,7 +913,7 @@ class clients_page(tk.Toplevel):
             # Close the add client window
             self.add_client_window.destroy()
 
-            # Display message to the user to confirm
+            # Display a success message to the user
             messagebox.showinfo("Info", "Client added successfully!")
 
         except sqlite3.Error as e:
@@ -918,20 +924,22 @@ class clients_page(tk.Toplevel):
             self.conn.close()
 
     def edit_client(self):
-        # Retrieve the item that the user has selected
+        # Retrieve the client that the user has selected
         selected_items = self.client_table.selection()
         if not selected_items:
-            # If there is an error then display a warning
+            # If nothing was selected then display a warning
             messagebox.showwarning("Warning", "Please select a client to edit.")
         elif len(selected_items) > 1:
-            # If there is an error then display a warning
+            # If there there are more than one things selected then display a warning
             messagebox.showwarning("Warning", "Multiple items selected, please only select one to edit.")
         else:
             # Get the client ID of the selected client
             client_id = selected_items[0]
+            # Connect to the database
             self.connect_database()
 
             try:
+                # Get everything from the database from the selected client
                 row = self.cursor.execute("SELECT * FROM client WHERE client_id=?", (client_id,)).fetchone()
                 if not row:
                     # If there isnt a row then display a warning
@@ -942,11 +950,11 @@ class clients_page(tk.Toplevel):
                     self.edit_client_window.title("Edit Client")
                     self.edit_client_window.geometry("300x300")
 
-                    # Create the frame to organise the display table and buttons
+                    # Create the frame to organise the display table and the buttons
                     edit_client_frame = tk.Frame(self.edit_client_window)
                     edit_client_frame.pack(padx=10, pady=10)
 
-                    # Create the client surname label and entry and insert the associated infomation
+                    # Create the client forename label and entry and insert the associated infomation
                     client_forename_label = tk.Label(edit_client_frame, text="*Forename:")
                     client_forename_label.grid(row=0, column=0)
                     self.client_forename_entry = tk.Entry(edit_client_frame)
@@ -1017,6 +1025,7 @@ class clients_page(tk.Toplevel):
                 self.conn.close()
 
     def update_client(self, client_id):
+        # Retrieve the values from the entry boxes
         forename = self.client_forename_entry.get()
         surname = self.client_surname_entry.get()
         DOB = self.client_dob_entry.get()
@@ -1026,136 +1035,184 @@ class clients_page(tk.Toplevel):
         address = self.client_address_entry.get()
         comments = self.client_comments_entry.get()
 
+        # Check to make sure that the required fields aren't empty
         if not forename or not surname or not DOB or not gender:
+            # If there is an error then display a warning
             messagebox.showerror("Error", "Fields marked with * are required!")
             return
 
+        # Check to make sure that the date is in the valid day-month-year format
         if not re.match(r'\d{2}/\d{2}/\d{4}', DOB):
+            # If certain data is missing then display a warning
             messagebox.showerror("Error", "Invalid DOB format. Use dd/mm/yyyy")
             return
 
+        # Check to make sure that the phone number is digits only
         if phone and not phone.isdigit():
+            # If the phone number isn't just digits then display a warning
             messagebox.showerror("Error", "Phone number should only contain digits.")
             return
 
+        # Check to make sure that the email is in the correct format
         if email and not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+            # If the email isn't in the correct format then display a warning# If there is an error then display a warning
             messagebox.showerror("Error", "Invalid email format.")
             return
 
         try:
+            # Connect to the database
             self.connect_database()
+            # Update the client information
             self.cursor.execute("""
                 UPDATE client 
                 SET client_forename=?, client_surname=?, client_DOB=?, client_gender=?, client_phone=?, client_email=?, client_address=?, client_comments=? 
                 WHERE client_id=?
             """, (forename, surname, DOB, gender, phone, email, address, comments, client_id))
-
-
+            # Commit the changes to the database
             self.conn.commit()
 
+            # Clear the existing rows in the client display table
+            # Then fetch and display the table with the database information
             for row in self.client_table.get_children():
                 self.client_table.delete(row)
             self.fetch_and_display()
 
+            # Close the edit client window
             self.edit_client_window.destroy()
+            # Display a success message to the user
             messagebox.showinfo("Info", "Client updated successfully!")
 
         except sqlite3.Error as e:
+            # If there is an SQL error then display a warning
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
+            # Close the database connection
             self.conn.close()
 
     def delete_client(self):
+        # Get the selected items from the clients display table
         selected_items = self.client_table.selection()
 
         if not selected_items:
+            # If no items are selected then display a warning
             messagebox.showwarning("Warning", "Please select a client to delete.")
             return
 
+        # Get the number of selected clients
         number_selected = len(selected_items)
+        # Get the user to confirm the deletion
         confirm = messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete {number_selected} client(s)?")
         if not confirm:
             return
 
+        # Connect to the database
         self.connect_database()
 
         try:
+            # Loop through the selected items and delete the associated item from the clients database
             for client_id in selected_items:
                 self.cursor.execute("DELETE FROM client WHERE client_id=?", (client_id,))
                 self.client_table.delete(client_id)
 
+            # Commit the changes to the database
             self.conn.commit()
+            # If done correctly then show a success message to the user
             messagebox.showinfo("Info", "Clients deleted successfully!")
         except sqlite3.Error as e:
+            # If there is an SQL error then display a warning
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
+            # Close the database connection
             self.conn.close()
 
     def select_all(self):
+        # Get all the items in the clients table
         items = self.client_table.get_children()
         for item in items:
             self.client_table.selection_add(item)
 
     def export_selected(self):
+        # Get all the selected items from the clients table
         selected_items = self.client_table.selection()
+        
+        # Check if there are any clients selected
         if not selected_items:
+            # If no client is selected then display a warning
             messagebox.showwarning("Warning", "No clients selected for export.")
             return
         
+        # Connect to the database
         self.connect_database()
 
         try:
             client_data = []
+            # Retrieve the data for the selected clients from the database
             for client_id in selected_items:
+                # Extract the client ID from the item ID
                 row = self.cursor.execute("SELECT * FROM client WHERE client_id=?", (client_id,)).fetchone()
                 if row:
                     client_data.append(row)
 
-    ### rewrite this code to be in own writing
             if client_data:
+                # If there are selected clients then export them as a Microsoft Excel file (.xlsx)
                 df = pd.DataFrame(client_data, columns=["client_id", "client_forename", "client_surname", "client_DOB", "client_gender", "client_phone", "client_email", "client_address", "client_comments"])
 
+                # Allow the user to chose where to save the file by opening File Explorer
                 file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel Files", "*.xlsx")])
 
                 if file_path:
+                    # Save the data as a Microsoft Excel file
                     df.to_excel(file_path, index=False)
+                    # If successful then display a message to the user
                     messagebox.showinfo("Info", "Selected clients exported to Excel successfully!")
 
         except sqlite3.Error as e:
+            # If there is an SQL error then display a warning
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
+            # Close the database connection
             self.conn.close()
-    ### end of rewrite code
 
+# This class allows the user to create and interact with all stored staff members
 class staff_page(tk.Toplevel):
     def __init__(self, master=None):
         super().__init__(master)
+        # Set up the staff window
         self.title("Staff")
         self.geometry("500x600")
 
+        # Create a heading frame to display the logo
         heading = ttk.Frame(self)
         heading.pack(pady=10, padx=10)
-
+        # Display the logo
         self.logo = tk.PhotoImage(file='img_fit1sttherapy_logo.png').subsample(12, 12)
         logo_label = ttk.Label(heading, image=self.logo)
         logo_label.grid(row=0, column=0, padx=10, pady=5)
 
+        # Create the staff display table
         self.staff_table = ttk.Treeview(self, columns=('Name', 'Gender', 'DOB', 'Status'), show='headings', height=14)
 
+        # Create the columns for the display table
         self.staff_table.column('Name', width=170)
         self.staff_table.column('Gender', width=50)
         self.staff_table.column('DOB', width=70)
         self.staff_table.column('Status', width=120)
 
+        # Give each column a heading in the display table
         self.staff_table.heading('Name', text='Name')
         self.staff_table.heading('Gender', text='Gender')
         self.staff_table.heading('DOB', text='DOB')
         self.staff_table.heading('Status', text='Status')
         self.staff_table.pack(pady=20)
 
+        # Fetch and display the staff from the database
+        self.fetch_and_display()
+
+        # Create the menu frame to display the buttons
         menu_frame = ttk.Frame(self)
         menu_frame.pack(pady=10, padx=10)
 
+        # Create and display the buttons
         view_staff = ttk.Button(menu_frame, text="View", command=self.view_staff_member)
         view_staff.grid(row=0, column=0, padx=5)
 
@@ -1174,47 +1231,58 @@ class staff_page(tk.Toplevel):
         export_button = ttk.Button(menu_frame, text="Export Selected", command=self.export_selected)
         export_button.grid(row=2, column=2, padx=5, pady=10)
 
-        self.fetch_and_display()
-
     def connect_database(self):
+        # Establish a connection to the database
         self.conn = sqlite3.connect('database.db')
         self.cursor = self.conn.cursor()
 
     def fetch_and_display(self):
-    ### Make this either more complex or make this somehow better 30/10/23
-    ### Maybe change the || ' ' || to something more clear?
+        # Fetch the staff from the database and then display them in the table
+        # Connect to the database
         self.connect_database()
+        # This query takes the staff IDs stored in the staff table and searches the database
         query = '''
         SELECT staff_id, staff_forename || ' ' || staff_surname AS Name, staff_gender AS Gender, staff_DOB AS DOB, staff_status AS Status
         FROM staff
         ORDER BY Name
         '''
+        # Insert the rows from the database into the staff display table
         rows = self.cursor.execute(query).fetchall()
         for row in rows:
             self.staff_table.insert("", "end", iid=row[0], values=row[1:])  
 
     def view_staff_member(self):
+        # Retrieve the staff member that the user has selected
         selected_item = self.staff_table.selection()
         if not selected_item:
+            # If no staff member has been selected then display a warning
             messagebox.showwarning("Warning", "Please select a staff member to view.")
             return
 
+        # Get the staff ID from the selected row
         staff_id = selected_item[0]
+        # Connect to the database
         self.connect_database()
 
         try:
+            # Retrieve the associated staff details from the database for the selected staff ID
             row = self.cursor.execute("SELECT * FROM staff WHERE staff_id=?", (staff_id,)).fetchone()
+            # Check if a row has been retrieved
             if not row:
+                # If no row has been selected then display a warning to the user
                 messagebox.showwarning("Warning", "The selected staff member was not found.")
                 return
 
+            # Set up a new window to view the staff details
             self.view_staff_window = tk.Toplevel(self)
             self.view_staff_window.title("View Staff Member")
             self.view_staff_window.geometry("300x300")
 
+            # Create a frame to display the staff details
             view_staff_frame = tk.Frame(self.view_staff_window)
             view_staff_frame.pack(padx=10, pady=10)
 
+            # Create and display the labels and data from the selected staff ID
             staff_forename_label = tk.Label(view_staff_frame, text="Staff ID: " + str(row[0]))
             staff_forename_label.grid(row=0, column=0)
 
@@ -1246,33 +1314,42 @@ class staff_page(tk.Toplevel):
             staff_comments_label.grid(row=9, column=0)
         
         except sqlite3.Error as e:
+            # If there is an SQL error then display a warning
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
+            # Close the database connection
             self.conn.close()
 
     def add_staff_member(self):
+        # Set up the window to add a staff member
         self.add_staff_window = tk.Toplevel(self)
         self.add_staff_window.title("Add Staff Member")
         self.add_staff_window.geometry("300x300")
 
+        # Create the frame to organise the display table and buttons
         add_staff_frame = tk.Frame(self.add_staff_window)
         add_staff_frame.pack(padx=10, pady=10)
 
+        # Create the label and entry boxes for the user to input data
+        # Widgets for staff forename entry
         staff_forename_label = tk.Label(add_staff_frame, text="*Forename:")
         staff_forename_label.grid(row=0, column=0)
         self.staff_forename_entry = tk.Entry(add_staff_frame)
         self.staff_forename_entry.grid(row=0, column=1)
         
+        # Widgets for staff surname entry
         staff_surname_label = tk.Label(add_staff_frame, text="*Surname:")
         staff_surname_label.grid(row=1, column=0)
         self.staff_surname_entry = tk.Entry(add_staff_frame)
         self.staff_surname_entry.grid(row=1, column=1)
         
+        # Widgets for staff DOB entry
         staff_dob_label = tk.Label(add_staff_frame, text="*DOB:")
         staff_dob_label.grid(row=2, column=0)
         self.staff_dob_entry = tk.Entry(add_staff_frame)
         self.staff_dob_entry.grid(row=2, column=1)
 
+        # Widgets for staff gender entry
         self.gender_selection = tk.StringVar()
         staff_gender_label = tk.Label(add_staff_frame, text="*Gender:")
         staff_gender_label.grid(row=3, column=0)
@@ -1280,21 +1357,25 @@ class staff_page(tk.Toplevel):
         gender_entry = ttk.OptionMenu(add_staff_frame, self.gender_selection, gender_options[0], *gender_options)
         gender_entry.grid(row=3, column=1)
 
+        # Widgets for staff phone entry
         staff_phone_label = tk.Label(add_staff_frame, text="Phone:")
         staff_phone_label.grid(row=4, column=0)
         self.staff_phone_entry = tk.Entry(add_staff_frame)
         self.staff_phone_entry.grid(row=4, column=1)
         
+        # Widgets for staff email entry
         staff_email_label = tk.Label(add_staff_frame, text="Email:")
         staff_email_label.grid(row=5, column=0)
         self.staff_email_entry = tk.Entry(add_staff_frame)
         self.staff_email_entry.grid(row=5, column=1)
 
+        # Widgets for staff address entry
         staff_address_label = tk.Label(add_staff_frame, text="Address:")
         staff_address_label.grid(row=6, column=0)
         self.staff_address_entry = tk.Entry(add_staff_frame)
         self.staff_address_entry.grid(row=6, column=1)
 
+        # Widgets for staff status entry
         self.status_selection = tk.StringVar()
         staff_status_label = tk.Label(add_staff_frame, text="*Status:")
         staff_status_label.grid(row=7, column=0)
@@ -1302,15 +1383,18 @@ class staff_page(tk.Toplevel):
         self.status_entry = ttk.OptionMenu(add_staff_frame, self.status_selection, status_options[0], *status_options)
         self.status_entry.grid(row=7, column=1)
 
+        # Widgets for staff comments entry
         staff_comments_label = tk.Label(add_staff_frame, text="Comments:")
         staff_comments_label.grid(row=8, column=0)
         self.staff_comments_entry = tk.Entry(add_staff_frame)
         self.staff_comments_entry.grid(row=8, column=1)
 
+        # Button to create a new staff member
         submit_button = ttk.Button(add_staff_frame, text="Add New Staff Member", command=self.submit_staff)
         submit_button.grid(row=9, column=0, columnspan=2)
 
     def submit_staff(self):
+        # Retrieve the values from the entry boxes
         forename = self.staff_forename_entry.get()
         surname = self.staff_surname_entry.get()
         DOB = self.staff_dob_entry.get()
@@ -1321,80 +1405,109 @@ class staff_page(tk.Toplevel):
         status = self.status_selection.get()
         comments = self.staff_comments_entry.get()
 
+        # Check to make sure that the required fields aren't empty
         if not forename or not surname or not DOB or not gender or not status:
+            # If all the inputs aren't present then display a warning
             messagebox.showerror("Error", "Fields marked with * are required!")
             return
 
+        # Check to make sure that the data is in the valid day-month-year format
         if not re.match(r'\d{2}/\d{2}/\d{4}', DOB):
+            # If there is an error then display a warning
             messagebox.showerror("Error", "Invalid DOB format. Use dd/mm/yyyy")
             return
 
+        # Check to make sure that the phone number is digits only
         if phone and not phone.isdigit():
+            # If there is an error then display a warning
             messagebox.showerror("Error", "Phone number should only contain digits.")
             return
 
+        # Check to make sure that the email is in the correct format
         if email and not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+            # If there is an error then display a warning
             messagebox.showerror("Error", "Invalid email format.")
             return
 
         try:
+            # Connect to the database
             self.connect_database()
+            # Add a new staff member's information into the database
             self.cursor.execute("INSERT INTO staff (staff_forename, staff_surname, staff_DOB, staff_gender, staff_phone, staff_email, staff_address, staff_status, staff_comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (forename, surname, DOB, gender, phone, email, address, status, comments))
+            # Commit the changes to the database
             self.conn.commit()
 
+            # Clear all the rows and then fetch and display the information to the display table
             for row in self.staff_table.get_children():
                 self.staff_table.delete(row)
             self.fetch_and_display()
 
+            # Close the add staff window
             self.add_staff_window.destroy()
 
+            # Display a success messsage to the user
             messagebox.showinfo("Info", "Staff member added successfully!")
 
         except sqlite3.Error as e:
+            # If there is an SQL error then display a warning
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
+            # CLose the database connection
             self.conn.close()
 
     def edit_staff_member(self):
+        # Retrieve the staff member that the user has selected
         selected_items = self.staff_table.selection()
         if not selected_items:
+            # If nothing was selected then display a warning
             messagebox.showwarning("Warning", "Please select a staff member to edit.")
         elif len(selected_items) > 1:
+            # If there there are more than one things selected then display a warning
             messagebox.showwarning("Warning", "Multiple items selected, please only select one to edit.")
         else:
+            # Get the staff ID of the selected staff member
             staff_id = selected_items[0]
+            # Connect to the database
             self.connect_database()
 
             try:
+                # Get everything from the database from the selected staff member
                 row = self.cursor.execute("SELECT * FROM staff WHERE staff_id=?", (staff_id,)).fetchone()
                 if not row:
+                    # If there isnt a row then display a warning
                     messagebox.showwarning("Warning", "The selected staff member was not found.")
                 else:
+                    # Set up the window to edit a staff member
                     self.edit_staff_window = tk.Toplevel(self)
                     self.edit_staff_window.title("Edit Staff Member")
                     self.edit_staff_window.geometry("300x300")
 
+                    # Create a frame to organise the display table and the buttons
                     edit_staff_frame = tk.Frame(self.edit_staff_window)
                     edit_staff_frame.pack(padx=10, pady=10)
 
+                    # Create the staff forename label and entry and insert the associated infomation 
                     staff_forename_label = tk.Label(edit_staff_frame, text="*Forename:")
                     staff_forename_label.grid(row=0, column=0)
                     self.staff_forename_entry = tk.Entry(edit_staff_frame)
                     self.staff_forename_entry.grid(row=0, column=1)
                     self.staff_forename_entry.insert(0, row[1])
 
+                    # Create the staff surname label and entry and insert the associated infomation
                     staff_surname_label = tk.Label(edit_staff_frame, text="*Surname:")
                     staff_surname_label.grid(row=1, column=0)
                     self.staff_surname_entry = tk.Entry(edit_staff_frame)
                     self.staff_surname_entry.grid(row=1, column=1)
                     self.staff_surname_entry.insert(0, row[2])
 
+                    # Create the staff DOB label and entry and insert the associated infomation
                     staff_dob_label = tk.Label(edit_staff_frame, text="*DOB:")
                     staff_dob_label.grid(row=2, column=0)
                     self.staff_dob_entry = tk.Entry(edit_staff_frame)
                     self.staff_dob_entry.grid(row=2, column=1)
                     self.staff_dob_entry.insert(0, row[3])
 
+                    # Create the staff gender label and entry and insert the associated infomation
                     self.gender_selection = tk.StringVar()
                     staff_gender_label = tk.Label(edit_staff_frame, text="*Gender:")
                     staff_gender_label.grid(row=3, column=0)
@@ -1403,25 +1516,29 @@ class staff_page(tk.Toplevel):
                     gender_selection = tk.StringVar(value=selected_gender)
                     staff_gender_entry = ttk.OptionMenu(edit_staff_frame, self.gender_selection, selected_gender, *gender_options)
                     staff_gender_entry.grid(row=3, column=1)
-                    
+
+                    # Create the staff phone number label and entry and insert the associated infomation
                     staff_phone_label = tk.Label(edit_staff_frame, text="Phone:")
                     staff_phone_label.grid(row=4, column=0)
                     self.staff_phone_entry = tk.Entry(edit_staff_frame)
                     self.staff_phone_entry.grid(row=4, column=1)
                     self.staff_phone_entry.insert(0, row[5])
 
+                    # Create the staff email address label and entry and insert the associated infomation
                     staff_email_label = tk.Label(edit_staff_frame, text="Email:")
                     staff_email_label.grid(row=5, column=0)
                     self.staff_email_entry = tk.Entry(edit_staff_frame)
                     self.staff_email_entry.grid(row=5, column=1)
                     self.staff_email_entry.insert(0, row[6])
 
+                    # Create the staff address label and entry and insert the associated infomation
                     staff_address_label = tk.Label(edit_staff_frame, text="Address:")
                     staff_address_label.grid(row=6, column=0)
                     self.staff_address_entry = tk.Entry(edit_staff_frame)
                     self.staff_address_entry.grid(row=6, column=1)
                     self.staff_address_entry.insert(0, row[7])
 
+                    # Create the staff status label and entry and insert the associated infomation
                     self.status_selection = tk.StringVar()
                     staff_status_label = tk.Label(edit_staff_frame, text="*Status:")
                     staff_status_label.grid(row=7, column=0)
@@ -1431,21 +1548,26 @@ class staff_page(tk.Toplevel):
                     staff_status_entry = ttk.OptionMenu(edit_staff_frame, self.status_selection, selected_status, *status_options)
                     staff_status_entry.grid(row=7, column=1)
 
+                    # Create the staff comments label and entry and insert the associated infomation
                     staff_comments_label = tk.Label(edit_staff_frame, text="Comments:")
                     staff_comments_label.grid(row=8, column=0)
                     self.staff_comments_entry = tk.Entry(edit_staff_frame)
                     self.staff_comments_entry.grid(row=8, column=1)
                     self.staff_comments_entry.insert(0, row[9])
 
+                    # Button to update the selected client
                     submit_button = ttk.Button(edit_staff_frame, text="Update Staff Member", command=lambda: self.update_staff(row[0]))
                     submit_button.grid(row=9, column=0, columnspan=2)
 
             except sqlite3.Error as e:
+                # If there is an SQL error then display a warning
                 messagebox.showerror("Error", f"An error occurred: {e}")
             finally:
+                # Close the databaes connection
                 self.conn.close()
 
     def update_staff(self, staff_id):
+        # Retrieve the values from the entry boxes
         forename = self.staff_forename_entry.get()
         surname = self.staff_surname_entry.get()
         DOB = self.staff_dob_entry.get()
@@ -1456,109 +1578,144 @@ class staff_page(tk.Toplevel):
         status = self.status_selection.get()
         comments = self.staff_comments_entry.get()
 
-        print(forename, surname, DOB, gender, phone, email, address, status, comments)
-
+        # Check to make sure that the required fields aren't empty
         if not forename or not surname or not DOB or not gender or not status:
+            # If certain data is missing then display a warning
             messagebox.showerror("Error", "Fields marked with * are required!")
             return
 
+        # Check to make sure that the date is in the valid day-month-year format
         if not re.match(r'\d{2}/\d{2}/\d{4}', DOB):
             messagebox.showerror("Error", "Invalid DOB format. Use dd/mm/yyyy")
             return
 
+        # Check to make sure that the phone number is digits only
         if phone and not phone.isdigit():
+            # If the phone number isn't just digits then display a warning
             messagebox.showerror("Error", "Phone number should only contain digits.")
             return
 
+        # Check to make sure that the email is in the correct format
         if email and not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+            # If the email isn't in the correct format then display a warning
             messagebox.showerror("Error", "Invalid email format.")
             return
 
         try:
+            # Connect to the database
             self.connect_database()
+            # Update the staff information
             self.cursor.execute("""
                 UPDATE staff 
                 SET staff_forename=?, staff_surname=?, staff_DOB=?, staff_gender=?, staff_phone=?, staff_email=?, staff_address=?, staff_status=?, staff_comments=? 
                 WHERE staff_id=?
             """, (forename, surname, DOB, gender, phone, email, address, status, comments, staff_id))
-
-
+            # Commit the changes to the database
             self.conn.commit()
 
+            # Clear the existing rows in the staff display table
+            # Then fetch and display the table with the database information
             for row in self.staff_table.get_children():
                 self.staff_table.delete(row)
             self.fetch_and_display()
 
+            # Close the edit staff window
             self.edit_staff_window.destroy()
+            # Display a success message to the user
             messagebox.showinfo("Info", "Staff member updated successfully!")
 
         except sqlite3.Error as e:
+            # If there is an SQL error then display a warning
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
+            # Close the database connection
             self.conn.close()
 
     def delete_staff_member(self):
+        # Get the selected staff member from the staff display table
         selected_items = self.staff_table.selection()
 
         if not selected_items:
+            # If no items are selected then display a warning
             messagebox.showwarning("Warning", "Please select staff members to delete.")
             return
 
+        # Get the number of selected staff members
         number_selected = len(selected_items)
+        # Get the user to confirm the deletion
         confirm = messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete {number_selected} staff member(s)?")
         if not confirm:
             return
 
+        # Connect to the database
         self.connect_database()
-
         try:
+            # Loop through all the selected staff members and delete the associated item from the staff database table
             for staff_id in selected_items:
                 self.cursor.execute("DELETE FROM staff WHERE staff_id=?", (staff_id,))
                 self.staff_table.delete(staff_id)
 
+            # Commit the changes to the database
             self.conn.commit()
+            # If done correctly then show a success message to the user
             messagebox.showinfo("Info", "Staff members deleted successfully!")
         except sqlite3.Error as e:
+            # If there is an SQL error then display a warning to the user
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
+            # Close the database connection
             self.conn.close()
 
     def select_all(self):
+        # Get all the items in the staff table
         items = self.staff_table.get_children()
         for item in items:
             self.staff_table.selection_add(item)
 
     def export_selected(self):
+        # Get all the selected items from the staff table
         selected_items = self.staff_table.selection()
+
+        # Check if there are any staff members selected
         if not selected_items:
+            # If no staff member is selected then display a warning to the user
             messagebox.showwarning("Warning", "No staff members selected for export.")
             return
         
+        # Connect to the database
         self.connect_database()
 
         try:
             staff_data = []
+            # Retrieve the data for the selected staff members from the database
             for staff_id in selected_items:
+                # Extract the staff ID from the selected staff members ID
                 row = self.cursor.execute("SELECT * FROM staff WHERE staff_id=?", (staff_id,)).fetchone()
                 if row:
                     staff_data.append(row)
 
-    ### rewrite this code to be in own writing
             if staff_data:
+                # If there are selected staff members then export them as a Microsoft Excel (.xlsx)
                 df = pd.DataFrame(staff_data, columns=["staff_id", "staff_forename", "staff_surname", "staff_DOB", "staff_gender", "staff_phone", "staff_email", "staff_address", "staff_status", "staff_comments"])
 
+                # Allow the user to chose where to save the file by opening File Explorer
                 file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel Files", "*.xlsx")])
 
                 if file_path:
+                    # Save the data as a Microsoft Excel file
                     df.to_excel(file_path, index=False)
+                    # If successful then display a message to the user
                     messagebox.showinfo("Info", "Selected staff members exported to Excel successfully!")
 
         except sqlite3.Error as e:
+            # If there is an SQL error then display a warning
             messagebox.showerror("Error", f"An error occurred: {e}")
         finally:
+            # Close the database connection
             self.conn.close()
-    ### end of rewrite code
 
 if __name__ == "__main__":
+    # Load up the Login Window
     app = loginWindow()
+    # Start the program
     app.mainloop()
