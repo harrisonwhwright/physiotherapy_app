@@ -52,7 +52,7 @@ class loginWindow(tk.Tk):
         self.cursor.execute("SELECT password FROM login WHERE username=?", (username,))
         result = self.cursor.fetchone()
 
-        # Check to make sure that the password matches the one found in the database
+        # Check to make sure that the password when encrypted matches the one found in the database
         if result and bcrypt.checkpw(password, result[0]):
             # If successful login, then assign the current logged in user
             current_logged_in_user = username
