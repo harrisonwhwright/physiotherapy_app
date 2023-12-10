@@ -26,7 +26,7 @@ def setup_database():
         staff_forename VARCHAR(50),
         staff_surname VARCHAR(50),
         staff_DOB DATE,
-        staff_gender CHAR(1),
+        staff_gender VARCHAR(9),
         staff_phone VARCHAR(15),
         staff_email VARCHAR(50),
         staff_address VARCHAR(100),
@@ -39,8 +39,8 @@ def setup_database():
     CREATE TABLE IF NOT EXISTS service (
         service_id INTEGER PRIMARY KEY AUTOINCREMENT,
         service_name VARCHAR(50),
-        service_cost DECIMAL,
-        service_typical_length INTEGER
+        service_cost FLOAT,
+        service_length INTEGER
     )
     ''')
 
@@ -69,8 +69,7 @@ def setup_database():
     CREATE TABLE IF NOT EXISTS bill (
         bill_id INTEGER PRIMARY KEY AUTOINCREMENT,
         appointment_id INTEGER REFERENCES appointment (appointment_id),
-        bill_date DATE,
-        bill_amount DECIMAL,
+        bill_amount FLOAT,
         bill_status VARCHAR(20)
     )
     ''')
