@@ -63,7 +63,6 @@ class loginWindow(tk.Tk):
 
         # Check to make sure that the password when encrypted matches the one found in the database
         if result and bcrypt.checkpw(password, result[0]):
-            self.destroy()
             # If successful login, then assign the current logged in user
             self.run_main_window(status=True)
 
@@ -77,6 +76,8 @@ class loginWindow(tk.Tk):
     def run_main_window(self, status=False):
         global loggedin
         loggedin = status
+        # Destroy the current window
+        self.destroy()
         # Load up the main window for the program
         main_window = mainWindow()
         main_window.mainloop()
@@ -85,6 +86,8 @@ class loginWindow(tk.Tk):
 class mainWindow(tk.Tk):
     def __init__(self):
         super().__init__()
+        # Access the global loggedin variable
+        global loggedin
 
         # Set up the main window
         self.title("Main Window")
@@ -98,7 +101,9 @@ class mainWindow(tk.Tk):
         ttk.Button(self, text="Appointments", command=self.open_appointments).pack(pady=5)
         ttk.Button(self, text="Clients", command=self.open_clients).pack(pady=5)
         ttk.Button(self, text="Staff", command=self.open_staff).pack(pady=5)
-        ttk.Button(self, text="Transactions", command=self.open_transactions).pack(pady=5)
+        # Check if the user is logged in
+        if loggedin == True:
+            ttk.Button(self, text="Transactions", command=self.open_transactions).pack(pady=5)
 
         # Display the button that allows the user to log out
         button_logout = ttk.Button(self, text="Logout", command=self.logout).pack(pady=5)
@@ -127,6 +132,9 @@ class mainWindow(tk.Tk):
 # This class allows the user to create and interact with all stored appointents
 class appointments_page(tk.Toplevel):
     def __init__(self, master=None):
+        # Fetch the loggedin variable
+        global loggedin
+
         super().__init__(master)
         # Set up the appointments window
         self.title("Appointments")
@@ -174,17 +182,19 @@ class appointments_page(tk.Toplevel):
         add_appointment = ttk.Button(menu_frame, text="Add", command=self.add_appointment)
         add_appointment.grid(row=0, column=1, padx=5)
 
-        edit_appointment = ttk.Button(menu_frame, text="Edit", command=self.edit_appointment)
-        edit_appointment.grid(row=0, column=2, padx=5)
+        # Check to make sure that the user is logged in
+        if loggedin == True:
+            edit_appointment = ttk.Button(menu_frame, text="Edit", command=self.edit_appointment)
+            edit_appointment.grid(row=0, column=2, padx=5)
 
-        delete_appointment = ttk.Button(menu_frame, text="Delete", command=self.delete_appointment)
-        delete_appointment.grid(row=0, column=3, padx=5)
+            delete_appointment = ttk.Button(menu_frame, text="Delete", command=self.delete_appointment)
+            delete_appointment.grid(row=0, column=3, padx=5)
 
-        selectall_button = ttk.Button(menu_frame, text="Select All", command=self.select_all)
-        selectall_button.grid(row=1, column=1, padx=5)
+            selectall_button = ttk.Button(menu_frame, text="Select All", command=self.select_all)
+            selectall_button.grid(row=1, column=1, padx=5)
 
-        export_button = ttk.Button(menu_frame, text="Export", command=self.export_selected)
-        export_button.grid(row=1, column=2, padx=5)
+            export_button = ttk.Button(menu_frame, text="Export", command=self.export_selected)
+            export_button.grid(row=1, column=2, padx=5)
 
         # Create a frame and display a button to access the services page
         services_frame = ttk.Frame(self)
@@ -786,6 +796,9 @@ class appointments_page(tk.Toplevel):
 # This class allows the user to create and interact with all stored services
 class services_page(tk.Toplevel):
     def __init__(self, master=None):
+        # Fetch the loggedin variable
+        global loggedin
+
         super().__init__(master)
         # Set up the services window
         self.title("Services")
@@ -814,12 +827,14 @@ class services_page(tk.Toplevel):
         menu_frame = ttk.Frame(self)
         menu_frame.pack(pady=10, padx=10)
 
-        # Create and display the buttons
-        view_service = ttk.Button(menu_frame, text="Add", command=self.add_service)
-        view_service.grid(row=0, column=0, padx=5)
+        # Check to make sure that the user is logged in
+        if loggedin == True:
+            # Create and display the buttons
+            view_service = ttk.Button(menu_frame, text="Add", command=self.add_service)
+            view_service.grid(row=0, column=0, padx=5)
 
-        delete_service = ttk.Button(menu_frame, text="Delete", command=self.delete_service)
-        delete_service.grid(row=0, column=1, padx=5)
+            delete_service = ttk.Button(menu_frame, text="Delete", command=self.delete_service)
+            delete_service.grid(row=0, column=1, padx=5)
 
     def connect_database(self):
         # Establish a connection to the database
@@ -964,6 +979,9 @@ class services_page(tk.Toplevel):
 class clients_page(tk.Toplevel):
     def __init__(self, master=None):
         super().__init__(master)
+        # Fetch the loggedin variable
+        global loggedin
+
         # Set up the clients window
         self.title("Clients")
         self.geometry("550x600")
@@ -1010,17 +1028,19 @@ class clients_page(tk.Toplevel):
         add_client = ttk.Button(menu_frame, text="Add", command=self.add_client)
         add_client.grid(row=0, column=1, padx=5)
 
-        edit_client = ttk.Button(menu_frame, text="Edit", command=self.edit_client)
-        edit_client.grid(row=0, column=2, padx=5)
+        # Check to make sure that the user is logged in
+        if loggedin == True:
+            edit_client = ttk.Button(menu_frame, text="Edit", command=self.edit_client)
+            edit_client.grid(row=0, column=2, padx=5)
 
-        delete_client = ttk.Button(menu_frame, text="Delete", command=self.delete_client)
-        delete_client.grid(row=0, column=3, padx=5)
+            delete_client = ttk.Button(menu_frame, text="Delete", command=self.delete_client)
+            delete_client.grid(row=0, column=3, padx=5)
 
-        select_all_button = ttk.Button(menu_frame, text="Select All", command=self.select_all)
-        select_all_button.grid(row=2, column=1, padx=5, pady=10)
+            select_all_button = ttk.Button(menu_frame, text="Select All", command=self.select_all)
+            select_all_button.grid(row=2, column=1, padx=5, pady=10)
 
-        export_button = ttk.Button(menu_frame, text="Export Selected", command=self.export_selected)
-        export_button.grid(row=2, column=2, padx=5, pady=10)
+            export_button = ttk.Button(menu_frame, text="Export Selected", command=self.export_selected)
+            export_button.grid(row=2, column=2, padx=5, pady=10)
 
     def connect_database(self):
         # Establish a connection to the database
@@ -1498,6 +1518,9 @@ class clients_page(tk.Toplevel):
 # This class allows the user to create and interact with all stored staff members
 class staff_page(tk.Toplevel):
     def __init__(self, master=None):
+        # Fetch the loggedin variable
+        global loggedin
+
         super().__init__(master)
         # Set up the staff window
         self.title("Staff")
@@ -1541,17 +1564,19 @@ class staff_page(tk.Toplevel):
         add_staff = ttk.Button(menu_frame, text="Add", command=self.add_staff_member)
         add_staff.grid(row=0, column=1, padx=5)
 
-        edit_staff = ttk.Button(menu_frame, text="Edit", command=self.edit_staff_member)
-        edit_staff.grid(row=0, column=2, padx=5)
+        # Check to make sure that the user is logged in
+        if loggedin == True:
+            edit_staff = ttk.Button(menu_frame, text="Edit", command=self.edit_staff_member)
+            edit_staff.grid(row=0, column=2, padx=5)
 
-        delete_staff = ttk.Button(menu_frame, text="Delete", command=self.delete_staff_member)
-        delete_staff.grid(row=0, column=3, padx=5)
+            delete_staff = ttk.Button(menu_frame, text="Delete", command=self.delete_staff_member)
+            delete_staff.grid(row=0, column=3, padx=5)
 
-        select_all_button = ttk.Button(menu_frame, text="Select All", command=self.select_all)
-        select_all_button.grid(row=2, column=1, padx=5, pady=10)
+            select_all_button = ttk.Button(menu_frame, text="Select All", command=self.select_all)
+            select_all_button.grid(row=2, column=1, padx=5, pady=10)
 
-        export_button = ttk.Button(menu_frame, text="Export Selected", command=self.export_selected)
-        export_button.grid(row=2, column=2, padx=5, pady=10)
+            export_button = ttk.Button(menu_frame, text="Export Selected", command=self.export_selected)
+            export_button.grid(row=2, column=2, padx=5, pady=10)
 
     def connect_database(self):
         # Establish a connection to the database
@@ -2624,11 +2649,13 @@ class transaction_page(tk.Toplevel):
             self.conn.close()
 
     def show_graph_window(self, graph_plot):
+        # Create a new window to display the graph
         graph_window = tk.Toplevel(self)
         graph_window.title("Graph")
         graph_window.geometry("800x500")
-
+        # Create a tkinter canvas to display the MatPlotLib graph
         canvas = FigureCanvasTkAgg(graph_plot.gcf(), master=graph_window)
+        # Display the graph
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=1)
 
