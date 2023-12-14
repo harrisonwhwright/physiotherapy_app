@@ -844,11 +844,7 @@ class services_page(tk.Toplevel):
     def fetch_and_display(self):
         # Fetch service from the database and then display them in the table
         self.connect_database()
-        query = '''
-        SELECT *
-        FROM service
-        '''
-        rows = self.cursor.execute(query).fetchall()
+        rows = self.cursor.execute("SELECT * FROM service").fetchall()
         
         # Clear the existing rows in the display table
         for item in self.services_table.get_children():
@@ -1243,7 +1239,7 @@ class clients_page(tk.Toplevel):
             # Connnect to the database
             self.connect_database()
             # Add a new client into the table
-            self.cursor.execute("INSERT INTO client (client_forename, client_surname, client_DOB, client_gender, client_phone, client_email, client_address, client_comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (forename, surname, DOB, gender, phone, email, address, comments))
+            self.cursor.execute('''INSERT INTO client (client_forename, client_surname, client_DOB, client_gender, client_phone, client_email, client_address, client_comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', (forename, surname, DOB, gender, phone, email, address, comments))
             # Commit the changes to the database
             self.conn.commit()
 
@@ -1282,7 +1278,7 @@ class clients_page(tk.Toplevel):
 
             try:
                 # Get everything from the database from the selected client
-                row = self.cursor.execute("SELECT * FROM client WHERE client_id=?", (client_id,)).fetchone()
+                row = self.cursor.execute('''SELECT * FROM client WHERE client_id=?''', (client_id,)).fetchone()
                 if not row:
                     # If there isnt a row then display a warning
                     messagebox.showwarning("Warning", "The selected client was not found.")
@@ -1328,14 +1324,14 @@ class clients_page(tk.Toplevel):
                     client_gender_entry.grid(row=3, column=1)
 
                     # Create the client phone number label and entry and insert the associated infomation
-                    client_phone_label = tk.Label(edit_client_frame, text="Phone:")
+                    client_phone_label = tk.Label(edit_client_frame, text="(*)Phone:")
                     client_phone_label.grid(row=4, column=0)
                     self.client_phone_entry = tk.Entry(edit_client_frame)
                     self.client_phone_entry.grid(row=4, column=1)
                     self.client_phone_entry.insert(0, row[5])
 
                     # Create the client email label and entry and insert the associated infomation
-                    client_email_label = tk.Label(edit_client_frame, text="Email:")
+                    client_email_label = tk.Label(edit_client_frame, text="(*)Email:")
                     client_email_label.grid(row=5, column=0)
                     self.client_email_entry = tk.Entry(edit_client_frame)
                     self.client_email_entry.grid(row=5, column=1)
@@ -1389,6 +1385,12 @@ class clients_page(tk.Toplevel):
             messagebox.showerror("Error", "Invalid DOB format. Use dd/mm/yyyy")
             return
 
+        # Check to make sure that either a phone or email is present
+        if not (phone or email):
+            # If there is no phone number and email address then display a warning
+            messagebox.showerror("Error", "Either a phone number or an email address is required!")
+            return
+        
         # Check to make sure that the phone number is digits only
         if phone and not phone.isdigit():
             # If the phone number isn't just digits then display a warning
