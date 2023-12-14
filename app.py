@@ -223,10 +223,10 @@ class appointments_page(tk.Toplevel):
             appointment.appointment_comments
         FROM
             appointment
-            INNER JOIN client ON appointment.client_id = client.client_id
-            INNER JOIN staff ON appointment.staff_id = staff.staff_id
+            JOIN client ON appointment.client_id = client.client_id
+            JOIN staff ON appointment.staff_id = staff.staff_id
         ORDER BY
-            CASE WHEN appointment.appointment_status = 'Upcoming' THEN 0 ELSE 1 END, -- Sort by status
+            CASE WHEN appointment.appointment_status = 'Upcoming' THEN 0 ELSE 1 END,
             CAST(SUBSTR(appointment.appointment_session_date, 7, 4) AS INTEGER) ASC,
             CAST(SUBSTR(appointment.appointment_session_date, 4, 2) AS INTEGER) ASC,
             CAST(SUBSTR(appointment.appointment_session_date, 1, 2) AS INTEGER) ASC,
@@ -276,8 +276,8 @@ class appointments_page(tk.Toplevel):
                 appointment.appointment_comments
             FROM
                 appointment
-                INNER JOIN client ON appointment.client_id = client.client_id
-                INNER JOIN staff ON appointment.staff_id = staff.staff_id
+                JOIN client ON appointment.client_id = client.client_id
+                JOIN staff ON appointment.staff_id = staff.staff_id
             WHERE
                 appointment.appointment_id = ?
             '''
@@ -517,8 +517,8 @@ class appointments_page(tk.Toplevel):
                     appointment.appointment_comments
                 FROM
                     appointment
-                    INNER JOIN client ON appointment.client_id = client.client_id
-                    INNER JOIN staff ON appointment.staff_id = staff.staff_id
+                    JOIN client ON appointment.client_id = client.client_id
+                    JOIN staff ON appointment.staff_id = staff.staff_id
                 WHERE
                     appointment.appointment_id = ?
                 '''
@@ -2148,8 +2148,8 @@ class transaction_page(tk.Toplevel):
             bill.bill_status AS status
         FROM
             bill
-            INNER JOIN appointment ON bill.appointment_id = appointment.appointment_id
-            INNER JOIN client ON appointment.client_id = client.client_id;
+            JOIN appointment ON bill.appointment_id = appointment.appointment_id
+            JOIN client ON appointment.client_id = client.client_id;
         '''
 
         # Retrieve every bill from the database
@@ -2545,9 +2545,9 @@ class transaction_page(tk.Toplevel):
         try:
             # Loop through the selected items and delete the associated item from the bill database
             for item in selected_items:
-                bill_id = self.transactions_table_table.item(item, 'values')[0]
+                bill_id = self.transactions_table.item(item, 'values')[0]
                 self.cursor.execute("DELETE FROM bill WHERE bill_id=?", (bill_id,))
-                self.transactions_table_table.delete(item)
+                self.transactions_table.delete(item)
 
             # Commit the changes to the database
             self.conn.commit()
@@ -2634,7 +2634,7 @@ class transaction_page(tk.Toplevel):
                 appointment_session_date AS date,
                 SUM(bill_amount) AS earnings
             FROM bill
-            INNER JOIN appointment ON bill.appointment_id = appointment.appointment_id
+            JOIN appointment ON bill.appointment_id = appointment.appointment_id
             GROUP BY appointment_session_date
             '''
             # Fetch the date and the amount earned that day
