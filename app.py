@@ -901,7 +901,7 @@ class services_page(tk.Toplevel):
             return
         
         # Check to make sure that the bill amount is a valid price
-        if float(cost) != round(float(cost),2):
+        if (float(cost) != round(float(cost),2)) and float(cost)>0:
             # If there is an error then display a warning
             messagebox.showerror("Error", "Please enter a valid price")
             return
